@@ -1,1214 +1,4882 @@
-# ------------------------------------------------------ #
-# Makefile for the "Yamagi Quake 2 Client"               #
-#                                                        #
-# Just type "make" to compile the                        #
-#  - Client (quake2)                                     #
-#  - Server (q2ded)                                      #
-#  - Quake II Game (baseq2)                              #
-#  - Renderer libraries (gl1, gl3, soft)                 #
-#                                                        #
-# Base dependencies:                                     #
-#  - SDL 2.0                                             #
-#  - libGL                                               #
-#  - Vulkan headers                                      #
-#                                                        #
-# Optional dependencies:                                 #
-#  - CURL                                                #
-#  - OpenAL                                              #
-#                                                        #
-# Platforms:                                             #
-#  - FreeBSD                                             #
-#  - Linux                                               #
-#  - NetBSD                                              #
-#  - OpenBSD                                             #
-#  - OS X                                                #
-#  - Windows (MinGW)                                     #
-# ------------------------------------------------------ #
-
-# Variables
-# ---------
-
-# - ASAN: Builds with address sanitizer, includes DEBUG.
-# - DEBUG: Builds a debug build, forces -O0 and adds debug symbols.
-# - VERBOSE: Prints full compile, linker and misc commands.
-# - UBSAN: Builds with undefined behavior sanitizer, includes DEBUG.
-
-# ----------
-
-# User configurable options
-# -------------------------
-
-# Enables HTTP support through cURL. Used for
-# HTTP download.
-WITH_CURL:=yes
-
-# Enables the optional OpenAL sound system.
-# To use it your system needs libopenal.so.1
-# or openal32.dll (we recommend openal-soft)
-# installed
-WITH_OPENAL:=yes
-
-# Sets an RPATH to $ORIGIN/lib. It can be used to
-# inject custom libraries, e.g. a patches libSDL.so
-# or libopenal.so. Not supported on Windows.
-WITH_RPATH:=yes
-
-# Enable systemwide installation of game assets.
-WITH_SYSTEMWIDE:=no
-
-# This will set the default SYSTEMDIR, a non-empty string
-# would actually be used. On Windows normals slashes (/)
-# instead of backslashed (\) should be used! The string
-# MUST NOT be surrounded by quotation marks!
-WITH_SYSTEMDIR:=""
-
-# This will set the build options to create an MacOS .app-bundle.
-# The app-bundle itself will not be created, but the runtime paths
-# will be set to expect the game-data in *.app/
-# Contents/Resources
-OSX_APP:=yes
-
-# This is an optional configuration file, it'll be used in
-# case of presence.
-CONFIG_FILE:=config.mk
-
-# ----------
-
-# In case a of a configuration file being present, we'll just use it
-ifeq ($(wildcard $(CONFIG_FILE)), $(CONFIG_FILE))
-include $(CONFIG_FILE)
-endif
-
-# Detect the OS
-ifdef SystemRoot
-YQ2_OSTYPE ?= Windows
-else
-YQ2_OSTYPE ?= $(shell uname -s)
-endif
-
-# Special case for MinGW
-ifneq (,$(findstring MINGW,$(YQ2_OSTYPE)))
-YQ2_OSTYPE := Windows
-endif
-
-# Detect the architecture
-ifeq ($(YQ2_OSTYPE), Windows)
-ifdef MINGW_CHOST
-ifeq ($(MINGW_CHOST), x86_64-w64-mingw32)
-YQ2_ARCH ?= x86_64
-else # i686-w64-mingw32
-YQ2_ARCH ?= i386
-endif
-else # windows, but MINGW_CHOST not defined
-ifdef PROCESSOR_ARCHITEW6432
-# 64 bit Windows
-YQ2_ARCH ?= $(PROCESSOR_ARCHITEW6432)
-else
-# 32 bit Windows
-YQ2_ARCH ?= $(PROCESSOR_ARCHITECTURE)
-endif
-endif # windows but MINGW_CHOST not defined
-else
-ifneq ($(YQ2_OSTYPE), Darwin)
-# Normalize some abiguous YQ2_ARCH strings
-YQ2_ARCH ?= $(shell uname -m | sed -e 's/i.86/i386/' -e 's/amd64/x86_64/' -e 's/arm64/aarch64/' -e 's/^arm.*/arm/')
-else
-YQ2_ARCH ?= $(shell uname -m)
-endif
-endif
-
-# Detect the compiler
-ifeq ($(shell $(CC) -v 2>&1 | grep -c "clang version"), 1)
-COMPILER := clang
-COMPILERVER := $(shell $(CC)  -dumpversion | sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$$/&00/')
-else ifeq ($(shell $(CC) -v 2>&1 | grep -c -E "(gcc version|gcc-Version)"), 1)
-COMPILER := gcc
-COMPILERVER := $(shell $(CC)  -dumpversion | sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$$/&00/')
-else
-COMPILER := unknown
-endif
-
-# ASAN includes DEBUG
-ifdef ASAN
-DEBUG=1
-endif
-
-# UBSAN includes DEBUG
-ifdef UBSAN
-DEBUG=1
-endif
-
-# ----------
-
-# Base CFLAGS. These may be overridden by the environment.
-# Highest supported optimizations are -O2, higher levels
-# will likely break this crappy code.
-ifdef DEBUG
-CFLAGS ?= -O0 -g -Wall -pipe
-ifdef ASAN
-override CFLAGS += -fsanitize=address -DUSE_SANITIZER
-endif
-ifdef UBSAN
-override CFLAGS += -fsanitize=undefined -DUSE_SANITIZER
-endif
-else
-CFLAGS ?= -O2 -Wall -pipe -fomit-frame-pointer
-endif
-
-# Always needed are:
-#  -fno-strict-aliasing since the source doesn't comply
-#   with strict aliasing rules and it's next to impossible
-#   to get it there...
-#  -fwrapv for defined integer wrapping. MSVC6 did this
-#   and the game code requires it.
-#  -fvisibility=hidden to keep symbols hidden. This is
-#   mostly best practice and not really necessary.
-override CFLAGS += -fno-strict-aliasing -fwrapv -fvisibility=hidden
-
-# -MMD to generate header dependencies. Unsupported by
-#  the Clang shipped with OS X.
-ifneq ($(YQ2_OSTYPE), Darwin)
-override CFLAGS += -MMD
-endif
-
-# OS X architecture.
-ifeq ($(YQ2_OSTYPE), Darwin)
-override CFLAGS += -arch $(YQ2_ARCH)
-endif
-
-# ----------
-
-# ARM needs a sane minimum architecture. We need the `yield`
-# opcode, arm6k is the first iteration that supports it. arm6k
-# is also the first Raspberry PI generation and older hardware
-# is likely too slow to run the game. We're not enforcing the
-# minimum architecture, but if you're build for something older
-# like arm5 the `yield` opcode isn't compiled in and the game
-# (especially q2ded) will consume more CPU time than necessary.
-ifeq ($(YQ2_ARCH), arm)
-CFLAGS += -march=armv6k
-endif
-
-# ----------
-
-# Switch of some annoying warnings.
-ifeq ($(COMPILER), clang)
-	# -Wno-missing-braces because otherwise clang complains
-	#  about totally valid 'vec3_t bla = {0}' constructs.
-	override CFLAGS += -Wno-missing-braces
-else ifeq ($(COMPILER), gcc)
-	# GCC 8.0 or higher.
-	ifeq ($(shell test $(COMPILERVER) -ge 80000; echo $$?),0)
-	    # -Wno-format-truncation and -Wno-format-overflow
-		# because GCC spams about 50 false positives.
-		override CFLAGS += -Wno-format-truncation -Wno-format-overflow
-	endif
-endif
-
-# ----------
-
-# Defines the operating system and architecture
-override CFLAGS += -DYQ2OSTYPE=\"$(YQ2_OSTYPE)\" -DYQ2ARCH=\"$(YQ2_ARCH)\"
-
-# ----------
-
-# For reproduceable builds, look here for details:
-# https://reproducible-builds.org/specs/source-date-epoch/
-ifdef SOURCE_DATE_EPOCH
-override CFLAGS += -DBUILD_DATE=\"$(shell date --utc --date="@${SOURCE_DATE_EPOCH}" +"%b %_d %Y" | sed -e 's/ /\\ /g')\"
-endif
-
-# ----------
-
-# Using the default x87 float math on 32bit x86 causes rounding trouble
-# -ffloat-store could work around that, but the better solution is to
-# just enforce SSE - every x86 CPU since Pentium3 supports that
-# and this should even improve the performance on old CPUs
-ifeq ($(YQ2_ARCH), i386)
-override CFLAGS += -msse -mfpmath=sse
-endif
-
-# Force SSE math on x86_64. All sane compilers should do this
-# anyway, just to protect us from broken Linux distros.
-ifeq ($(YQ2_ARCH), x86_64)
-override CFLAGS += -mfpmath=sse
-endif
-
-# Disable floating-point expression contraction. While this shouldn't be
-# a problem for C (only for C++) better be safe than sorry. See
-# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100839 for details.
-ifeq ($(COMPILER), gcc)
-override CFLAGS += -ffp-contract=off
-endif
-
-# ----------
-
-# Systemwide installation.
-ifeq ($(WITH_SYSTEMWIDE),yes)
-override CFLAGS += -DSYSTEMWIDE
-ifneq ($(WITH_SYSTEMDIR),"")
-override CFLAGS += -DSYSTEMDIR=\"$(WITH_SYSTEMDIR)\"
-endif
-endif
-
-# ----------
-
-# We don't support encrypted ZIP files.
-ZIPCFLAGS := -DNOUNCRYPT
-
-# Just set IOAPI_NO_64 on everything that's not Linux or Windows,
-# otherwise minizip will use fopen64(), fseek64() and friends that
-# may be unavailable. This is - of course - not really correct, in
-# a better world we would set -DIOAPI_NO_64 to force everything to
-# fopen(), fseek() and so on and -D_FILE_OFFSET_BITS=64 to let the
-# libc headers do their work. Currently we can't do that because
-# Quake II uses nearly everywere int instead of off_t...
-#
-# This may have the side effect that ZIP files larger than 2GB are
-# unsupported. But I doubt that anyone has such large files, they
-# would likely hit other internal limits.
-ifneq ($(YQ2_OSTYPE),Windows)
-ifneq ($(YQ2_OSTYPE),Linux)
-ZIPCFLAGS += -DIOAPI_NO_64
-endif
-endif
-
-# ----------
-
-# Extra CFLAGS for SDL.
-SDLCFLAGS := $(shell sdl2-config --cflags)
-
-# ----------
-
-# Base include path.
-ifeq ($(YQ2_OSTYPE),Linux)
-INCLUDE ?= -I/usr/include
-else ifeq ($(YQ2_OSTYPE),FreeBSD)
-INCLUDE ?= -I/usr/local/include
-else ifeq ($(YQ2_OSTYPE),NetBSD)
-INCLUDE ?= -I/usr/X11R7/include -I/usr/pkg/include
-else ifeq ($(YQ2_OSTYPE),OpenBSD)
-INCLUDE ?= -I/usr/local/include
-else ifeq ($(YQ2_OSTYPE),Windows)
-INCLUDE ?= -I/usr/include
-endif
-
-# ----------
-
-# Base LDFLAGS. This is just the library path.
-ifeq ($(YQ2_OSTYPE),Linux)
-LDFLAGS ?= -L/usr/lib
-else ifeq ($(YQ2_OSTYPE),FreeBSD)
-LDFLAGS ?= -L/usr/local/lib
-else ifeq ($(YQ2_OSTYPE),NetBSD)
-LDFLAGS ?= -L/usr/X11R7/lib -Wl,-R/usr/X11R7/lib -L/usr/pkg/lib -Wl,-R/usr/pkg/lib
-else ifeq ($(YQ2_OSTYPE),OpenBSD)
-LDFLAGS ?= -L/usr/local/lib
-else ifeq ($(YQ2_OSTYPE),Windows)
-LDFLAGS ?= -L/usr/lib
-endif
-
-# Link address sanitizer if requested.
-ifdef ASAN
-override LDFLAGS += -fsanitize=address
-endif
-
-# Link undefined behavior sanitizer if requested.
-ifdef UBSAN
-override LDFLAGS += -fsanitize=undefined
-endif
-
-# Required libraries.
-ifeq ($(YQ2_OSTYPE),Linux)
-LDLIBS ?= -lm -ldl -rdynamic
-else ifeq ($(YQ2_OSTYPE),FreeBSD)
-LDLIBS ?= -lm
-else ifeq ($(YQ2_OSTYPE),NetBSD)
-LDLIBS ?= -lm
-else ifeq ($(YQ2_OSTYPE),OpenBSD)
-LDLIBS ?= -lm
-else ifeq ($(YQ2_OSTYPE),Windows)
-LDLIBS ?= -lws2_32 -lwinmm -static-libgcc
-else ifeq ($(YQ2_OSTYPE), Darwin)
-LDLIBS ?= -arch $(YQ2_ARCH)
-else ifeq ($(YQ2_OSTYPE), Haiku)
-LDLIBS ?= -lm -lnetwork
-else ifeq ($(YQ2_OSTYPE), SunOS)
-LDLIBS ?= -lm -lsocket -lnsl
-endif
-
-# ASAN and UBSAN must not be linked
-# with --no-undefined. OSX and OpenBSD
-# don't support it at all.
-ifndef ASAN
-ifndef UBSAN
-ifneq ($(YQ2_OSTYPE), Darwin)
-ifneq ($(YQ2_OSTYPE), OpenBSD)
-override LDFLAGS += -Wl,--no-undefined
-endif
-endif
-endif
-endif
-
-# ----------
-
-# Extra LDFLAGS for SDL
-ifeq ($(YQ2_OSTYPE), Darwin)
-SDLLDFLAGS := -lSDL2
-else # not Darwin
-SDLLDFLAGS := $(shell sdl2-config --libs)
-endif # Darwin
-
-# The renderer libs don't need libSDL2main, libmingw32 or -mwindows.
-ifeq ($(YQ2_OSTYPE), Windows)
-DLL_SDLLDFLAGS = $(subst -mwindows,,$(subst -lmingw32,,$(subst -lSDL2main,,$(SDLLDFLAGS))))
-endif
-
-# ----------
-
-# When make is invoked by "make VERBOSE=1" print
-# the compiler and linker commands.
-ifdef VERBOSE
-Q :=
-else
-Q := @
-endif
-
-# ----------
-
-# Phony targets
-.PHONY : all client game icon server ref_gl1 ref_gl3 ref_gles3 ref_soft
-
-# ----------
-
-# Builds everything
-all: config client server game ref_gl1 ref_gl3 ref_gles3 ref_soft
-
-# ----------
-
-# Print config values
-config:
-	@echo "Build configuration"
-	@echo "============================"
-	@echo "YQ2_ARCH = $(YQ2_ARCH) COMPILER = $(COMPILER)"
-	@echo "WITH_CURL = $(WITH_CURL)"
-	@echo "WITH_OPENAL = $(WITH_OPENAL)"
-	@echo "WITH_RPATH = $(WITH_RPATH)"
-	@echo "WITH_SYSTEMWIDE = $(WITH_SYSTEMWIDE)"
-	@echo "WITH_SYSTEMDIR = $(WITH_SYSTEMDIR)"
-	@echo "============================"
-	@echo ""
-
-# ----------
-
-# Special target to compile the icon on Windows
-ifeq ($(YQ2_OSTYPE), Windows)
-icon:
-	@echo "===> WR build/icon/icon.res"
-	${Q}mkdir -p build/icon
-	${Q}windres src/backends/windows/icon.rc -O COFF -o build/icon/icon.res
-endif
-
-# ----------
-
-# Cleanup
+# CMAKE generated file: DO NOT EDIT!
+# Generated by "Unix Makefiles" Generator, CMake Version 3.31
+
+# Default target executed when no arguments are given to make.
+default_target: all
+.PHONY : default_target
+
+# Allow only one "make -f Makefile2" at a time, but pass parallelism.
+.NOTPARALLEL:
+
+#=============================================================================
+# Special targets provided by cmake.
+
+# Disable implicit rules so canonical targets will work.
+.SUFFIXES:
+
+# Disable VCS-based implicit rules.
+% : %,v
+
+# Disable VCS-based implicit rules.
+% : RCS/%
+
+# Disable VCS-based implicit rules.
+% : RCS/%,v
+
+# Disable VCS-based implicit rules.
+% : SCCS/s.%
+
+# Disable VCS-based implicit rules.
+% : s.%
+
+.SUFFIXES: .hpux_make_needs_suffix_list
+
+# Command-line flag to silence nested $(MAKE).
+$(VERBOSE)MAKESILENT = -s
+
+#Suppress display of executed commands.
+$(VERBOSE).SILENT:
+
+# A target that is always out of date.
+cmake_force:
+.PHONY : cmake_force
+
+#=============================================================================
+# Set environment variables for the build.
+
+# The shell in which to execute make rules.
+SHELL = /bin/sh
+
+# The CMake executable.
+CMAKE_COMMAND = /usr/bin/cmake
+
+# The command to remove a file.
+RM = /usr/bin/cmake -E rm -f
+
+# Escaping for special characters.
+EQUALS = =
+
+# The top-level source directory on which CMake was run.
+CMAKE_SOURCE_DIR = /home/sophia/git/q2-mobderd
+
+# The top-level build directory on which CMake was run.
+CMAKE_BINARY_DIR = /home/sophia/git/q2-mobderd
+
+#=============================================================================
+# Targets provided globally by CMake.
+
+# Special rule for the target edit_cache
+edit_cache:
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Running CMake cache editor..."
+	/usr/bin/ccmake -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
+.PHONY : edit_cache
+
+# Special rule for the target edit_cache
+edit_cache/fast: edit_cache
+.PHONY : edit_cache/fast
+
+# Special rule for the target rebuild_cache
+rebuild_cache:
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Running CMake to regenerate build system..."
+	/usr/bin/cmake --regenerate-during-build -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
+.PHONY : rebuild_cache
+
+# Special rule for the target rebuild_cache
+rebuild_cache/fast: rebuild_cache
+.PHONY : rebuild_cache/fast
+
+# The main all target
+all: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/sophia/git/q2-mobderd/CMakeFiles /home/sophia/git/q2-mobderd//CMakeFiles/progress.marks
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/sophia/git/q2-mobderd/CMakeFiles 0
+.PHONY : all
+
+# The main clean target
 clean:
-	@echo "===> CLEAN"
-	${Q}rm -Rf build release/*
-
-cleanall:
-	@echo "===> CLEAN"
-	${Q}rm -Rf build release
-
-# ----------
-
-# The client
-ifeq ($(YQ2_OSTYPE), Windows)
-client:
-	@echo "===> Building yquake2.exe"
-	${Q}mkdir -p release
-	$(MAKE) release/yquake2.exe
-	@echo "===> Building quake2.exe Wrapper"
-	$(MAKE) release/quake2.exe
-
-build/client/%.o: %.c
-	@echo "===> CC $<"
-	${Q}mkdir -p $(@D)
-	${Q}$(CC) -c $(CFLAGS) $(SDLCFLAGS) $(ZIPCFLAGS) $(INCLUDE) -o $@ $<
-
-release/yquake2.exe : LDFLAGS += -mwindows
-
-ifeq ($(WITH_CURL),yes)
-release/yquake2.exe : CFLAGS += -DUSE_CURL
-endif
-
-ifeq ($(WITH_OPENAL),yes)
-release/yquake2.exe : CFLAGS += -DUSE_OPENAL -DDEFAULT_OPENAL_DRIVER='"openal32.dll"'
-endif
-
-else # not Windows
-
-client:
-	@echo "===> Building quake2"
-	${Q}mkdir -p release
-	$(MAKE) release/quake2
-
-ifeq ($(YQ2_OSTYPE), Darwin)
-build/client/%.o : %.c
-	@echo "===> CC $<"
-	${Q}mkdir -p $(@D)
-	${Q}$(CC) -arch $(YQ2_ARCH) -x objective-c -c $(CFLAGS) $(SDLCFLAGS) $(ZIPCFLAGS) $(INCLUDE)  $< -o $@
-else
-build/client/%.o: %.c
-	@echo "===> CC $<"
-	${Q}mkdir -p $(@D)
-	${Q}$(CC) -c $(CFLAGS) $(SDLCFLAGS) $(ZIPCFLAGS) $(INCLUDE) -o $@ $<
-endif
-
-release/quake2 : CFLAGS += -Wno-unused-result
-
-ifeq ($(WITH_CURL),yes)
-release/quake2 : CFLAGS += -DUSE_CURL
-endif
-
-ifeq ($(WITH_OPENAL),yes)
-ifeq ($(YQ2_OSTYPE), OpenBSD)
-release/quake2 : CFLAGS += -DUSE_OPENAL -DDEFAULT_OPENAL_DRIVER='"libopenal.so"'
-else ifeq ($(YQ2_OSTYPE), Darwin)
-release/quake2 : CFLAGS += -DUSE_OPENAL -DDEFAULT_OPENAL_DRIVER='"libopenal.dylib"' -I/usr/local/opt/openal-soft/include
-release/quake2 : LDFLAGS += -L/usr/local/opt/openal-soft/lib -rpath /usr/local/opt/openal-soft/lib
-else
-release/quake2 : CFLAGS += -DUSE_OPENAL -DDEFAULT_OPENAL_DRIVER='"libopenal.so.1"'
-endif
-endif
-
-ifeq ($(YQ2_OSTYPE), Linux)
-release/quake2 : CFLAGS += -DHAVE_EXECINFO
-endif
-
-ifeq ($(YQ2_OSTYPE), Darwin)
-release/quake2 : CFLAGS += -DHAVE_EXECINFO
-endif
-
-ifeq ($(YQ2_OSTYPE), SunOS)
-release/quake2 : CFLAGS += -DHAVE_EXECINFO
-endif
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 clean
+.PHONY : clean
+
+# The main clean target
+clean/fast: clean
+.PHONY : clean/fast
+
+# Prepare targets for installation.
+preinstall: all
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 preinstall
+.PHONY : preinstall
+
+# Prepare targets for installation.
+preinstall/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 preinstall
+.PHONY : preinstall/fast
+
+# clear depends
+depend:
+	$(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
+.PHONY : depend
+
+#=============================================================================
+# Target rules for targets named quake2
+
+# Build rule for target.
+quake2: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 quake2
+.PHONY : quake2
+
+# fast build rule for target.
+quake2/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/build
+.PHONY : quake2/fast
+
+#=============================================================================
+# Target rules for targets named q2ded
+
+# Build rule for target.
+q2ded: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 q2ded
+.PHONY : q2ded
+
+# fast build rule for target.
+q2ded/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/build
+.PHONY : q2ded/fast
+
+#=============================================================================
+# Target rules for targets named game
+
+# Build rule for target.
+game: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 game
+.PHONY : game
+
+# fast build rule for target.
+game/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/build
+.PHONY : game/fast
+
+#=============================================================================
+# Target rules for targets named ref_gl1
+
+# Build rule for target.
+ref_gl1: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ref_gl1
+.PHONY : ref_gl1
+
+# fast build rule for target.
+ref_gl1/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/build
+.PHONY : ref_gl1/fast
+
+#=============================================================================
+# Target rules for targets named ref_gl3
+
+# Build rule for target.
+ref_gl3: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ref_gl3
+.PHONY : ref_gl3
+
+# fast build rule for target.
+ref_gl3/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/build
+.PHONY : ref_gl3/fast
+
+#=============================================================================
+# Target rules for targets named ref_gles3
+
+# Build rule for target.
+ref_gles3: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ref_gles3
+.PHONY : ref_gles3
+
+# fast build rule for target.
+ref_gles3/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/build
+.PHONY : ref_gles3/fast
+
+#=============================================================================
+# Target rules for targets named ref_soft
+
+# Build rule for target.
+ref_soft: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ref_soft
+.PHONY : ref_soft
+
+# fast build rule for target.
+ref_soft/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/build
+.PHONY : ref_soft/fast
+
+src/backends/generic/misc.o: src/backends/generic/misc.c.o
+.PHONY : src/backends/generic/misc.o
+
+# target to build an object file
+src/backends/generic/misc.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/backends/generic/misc.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/backends/generic/misc.c.o
+.PHONY : src/backends/generic/misc.c.o
+
+src/backends/generic/misc.i: src/backends/generic/misc.c.i
+.PHONY : src/backends/generic/misc.i
+
+# target to preprocess a source file
+src/backends/generic/misc.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/backends/generic/misc.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/backends/generic/misc.c.i
+.PHONY : src/backends/generic/misc.c.i
+
+src/backends/generic/misc.s: src/backends/generic/misc.c.s
+.PHONY : src/backends/generic/misc.s
+
+# target to generate assembly for a file
+src/backends/generic/misc.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/backends/generic/misc.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/backends/generic/misc.c.s
+.PHONY : src/backends/generic/misc.c.s
+
+src/backends/unix/main.o: src/backends/unix/main.c.o
+.PHONY : src/backends/unix/main.o
+
+# target to build an object file
+src/backends/unix/main.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/backends/unix/main.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/backends/unix/main.c.o
+.PHONY : src/backends/unix/main.c.o
+
+src/backends/unix/main.i: src/backends/unix/main.c.i
+.PHONY : src/backends/unix/main.i
+
+# target to preprocess a source file
+src/backends/unix/main.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/backends/unix/main.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/backends/unix/main.c.i
+.PHONY : src/backends/unix/main.c.i
+
+src/backends/unix/main.s: src/backends/unix/main.c.s
+.PHONY : src/backends/unix/main.s
+
+# target to generate assembly for a file
+src/backends/unix/main.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/backends/unix/main.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/backends/unix/main.c.s
+.PHONY : src/backends/unix/main.c.s
+
+src/backends/unix/network.o: src/backends/unix/network.c.o
+.PHONY : src/backends/unix/network.o
+
+# target to build an object file
+src/backends/unix/network.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/backends/unix/network.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/backends/unix/network.c.o
+.PHONY : src/backends/unix/network.c.o
+
+src/backends/unix/network.i: src/backends/unix/network.c.i
+.PHONY : src/backends/unix/network.i
+
+# target to preprocess a source file
+src/backends/unix/network.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/backends/unix/network.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/backends/unix/network.c.i
+.PHONY : src/backends/unix/network.c.i
+
+src/backends/unix/network.s: src/backends/unix/network.c.s
+.PHONY : src/backends/unix/network.s
+
+# target to generate assembly for a file
+src/backends/unix/network.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/backends/unix/network.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/backends/unix/network.c.s
+.PHONY : src/backends/unix/network.c.s
+
+src/backends/unix/shared/hunk.o: src/backends/unix/shared/hunk.c.o
+.PHONY : src/backends/unix/shared/hunk.o
+
+# target to build an object file
+src/backends/unix/shared/hunk.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/backends/unix/shared/hunk.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/backends/unix/shared/hunk.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/backends/unix/shared/hunk.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/backends/unix/shared/hunk.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/backends/unix/shared/hunk.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/backends/unix/shared/hunk.c.o
+.PHONY : src/backends/unix/shared/hunk.c.o
+
+src/backends/unix/shared/hunk.i: src/backends/unix/shared/hunk.c.i
+.PHONY : src/backends/unix/shared/hunk.i
+
+# target to preprocess a source file
+src/backends/unix/shared/hunk.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/backends/unix/shared/hunk.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/backends/unix/shared/hunk.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/backends/unix/shared/hunk.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/backends/unix/shared/hunk.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/backends/unix/shared/hunk.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/backends/unix/shared/hunk.c.i
+.PHONY : src/backends/unix/shared/hunk.c.i
+
+src/backends/unix/shared/hunk.s: src/backends/unix/shared/hunk.c.s
+.PHONY : src/backends/unix/shared/hunk.s
+
+# target to generate assembly for a file
+src/backends/unix/shared/hunk.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/backends/unix/shared/hunk.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/backends/unix/shared/hunk.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/backends/unix/shared/hunk.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/backends/unix/shared/hunk.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/backends/unix/shared/hunk.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/backends/unix/shared/hunk.c.s
+.PHONY : src/backends/unix/shared/hunk.c.s
+
+src/backends/unix/signalhandler.o: src/backends/unix/signalhandler.c.o
+.PHONY : src/backends/unix/signalhandler.o
+
+# target to build an object file
+src/backends/unix/signalhandler.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/backends/unix/signalhandler.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/backends/unix/signalhandler.c.o
+.PHONY : src/backends/unix/signalhandler.c.o
+
+src/backends/unix/signalhandler.i: src/backends/unix/signalhandler.c.i
+.PHONY : src/backends/unix/signalhandler.i
+
+# target to preprocess a source file
+src/backends/unix/signalhandler.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/backends/unix/signalhandler.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/backends/unix/signalhandler.c.i
+.PHONY : src/backends/unix/signalhandler.c.i
+
+src/backends/unix/signalhandler.s: src/backends/unix/signalhandler.c.s
+.PHONY : src/backends/unix/signalhandler.s
+
+# target to generate assembly for a file
+src/backends/unix/signalhandler.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/backends/unix/signalhandler.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/backends/unix/signalhandler.c.s
+.PHONY : src/backends/unix/signalhandler.c.s
+
+src/backends/unix/system.o: src/backends/unix/system.c.o
+.PHONY : src/backends/unix/system.o
+
+# target to build an object file
+src/backends/unix/system.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/backends/unix/system.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/backends/unix/system.c.o
+.PHONY : src/backends/unix/system.c.o
+
+src/backends/unix/system.i: src/backends/unix/system.c.i
+.PHONY : src/backends/unix/system.i
+
+# target to preprocess a source file
+src/backends/unix/system.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/backends/unix/system.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/backends/unix/system.c.i
+.PHONY : src/backends/unix/system.c.i
+
+src/backends/unix/system.s: src/backends/unix/system.c.s
+.PHONY : src/backends/unix/system.s
+
+# target to generate assembly for a file
+src/backends/unix/system.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/backends/unix/system.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/backends/unix/system.c.s
+.PHONY : src/backends/unix/system.c.s
+
+src/client/cl_cin.o: src/client/cl_cin.c.o
+.PHONY : src/client/cl_cin.o
+
+# target to build an object file
+src/client/cl_cin.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_cin.c.o
+.PHONY : src/client/cl_cin.c.o
+
+src/client/cl_cin.i: src/client/cl_cin.c.i
+.PHONY : src/client/cl_cin.i
+
+# target to preprocess a source file
+src/client/cl_cin.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_cin.c.i
+.PHONY : src/client/cl_cin.c.i
+
+src/client/cl_cin.s: src/client/cl_cin.c.s
+.PHONY : src/client/cl_cin.s
+
+# target to generate assembly for a file
+src/client/cl_cin.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_cin.c.s
+.PHONY : src/client/cl_cin.c.s
+
+src/client/cl_console.o: src/client/cl_console.c.o
+.PHONY : src/client/cl_console.o
+
+# target to build an object file
+src/client/cl_console.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_console.c.o
+.PHONY : src/client/cl_console.c.o
+
+src/client/cl_console.i: src/client/cl_console.c.i
+.PHONY : src/client/cl_console.i
+
+# target to preprocess a source file
+src/client/cl_console.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_console.c.i
+.PHONY : src/client/cl_console.c.i
+
+src/client/cl_console.s: src/client/cl_console.c.s
+.PHONY : src/client/cl_console.s
+
+# target to generate assembly for a file
+src/client/cl_console.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_console.c.s
+.PHONY : src/client/cl_console.c.s
+
+src/client/cl_download.o: src/client/cl_download.c.o
+.PHONY : src/client/cl_download.o
+
+# target to build an object file
+src/client/cl_download.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_download.c.o
+.PHONY : src/client/cl_download.c.o
+
+src/client/cl_download.i: src/client/cl_download.c.i
+.PHONY : src/client/cl_download.i
+
+# target to preprocess a source file
+src/client/cl_download.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_download.c.i
+.PHONY : src/client/cl_download.c.i
+
+src/client/cl_download.s: src/client/cl_download.c.s
+.PHONY : src/client/cl_download.s
+
+# target to generate assembly for a file
+src/client/cl_download.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_download.c.s
+.PHONY : src/client/cl_download.c.s
+
+src/client/cl_effects.o: src/client/cl_effects.c.o
+.PHONY : src/client/cl_effects.o
+
+# target to build an object file
+src/client/cl_effects.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_effects.c.o
+.PHONY : src/client/cl_effects.c.o
+
+src/client/cl_effects.i: src/client/cl_effects.c.i
+.PHONY : src/client/cl_effects.i
+
+# target to preprocess a source file
+src/client/cl_effects.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_effects.c.i
+.PHONY : src/client/cl_effects.c.i
+
+src/client/cl_effects.s: src/client/cl_effects.c.s
+.PHONY : src/client/cl_effects.s
+
+# target to generate assembly for a file
+src/client/cl_effects.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_effects.c.s
+.PHONY : src/client/cl_effects.c.s
+
+src/client/cl_entities.o: src/client/cl_entities.c.o
+.PHONY : src/client/cl_entities.o
+
+# target to build an object file
+src/client/cl_entities.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_entities.c.o
+.PHONY : src/client/cl_entities.c.o
+
+src/client/cl_entities.i: src/client/cl_entities.c.i
+.PHONY : src/client/cl_entities.i
+
+# target to preprocess a source file
+src/client/cl_entities.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_entities.c.i
+.PHONY : src/client/cl_entities.c.i
+
+src/client/cl_entities.s: src/client/cl_entities.c.s
+.PHONY : src/client/cl_entities.s
+
+# target to generate assembly for a file
+src/client/cl_entities.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_entities.c.s
+.PHONY : src/client/cl_entities.c.s
+
+src/client/cl_input.o: src/client/cl_input.c.o
+.PHONY : src/client/cl_input.o
+
+# target to build an object file
+src/client/cl_input.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_input.c.o
+.PHONY : src/client/cl_input.c.o
+
+src/client/cl_input.i: src/client/cl_input.c.i
+.PHONY : src/client/cl_input.i
+
+# target to preprocess a source file
+src/client/cl_input.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_input.c.i
+.PHONY : src/client/cl_input.c.i
+
+src/client/cl_input.s: src/client/cl_input.c.s
+.PHONY : src/client/cl_input.s
+
+# target to generate assembly for a file
+src/client/cl_input.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_input.c.s
+.PHONY : src/client/cl_input.c.s
+
+src/client/cl_inventory.o: src/client/cl_inventory.c.o
+.PHONY : src/client/cl_inventory.o
+
+# target to build an object file
+src/client/cl_inventory.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_inventory.c.o
+.PHONY : src/client/cl_inventory.c.o
+
+src/client/cl_inventory.i: src/client/cl_inventory.c.i
+.PHONY : src/client/cl_inventory.i
+
+# target to preprocess a source file
+src/client/cl_inventory.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_inventory.c.i
+.PHONY : src/client/cl_inventory.c.i
+
+src/client/cl_inventory.s: src/client/cl_inventory.c.s
+.PHONY : src/client/cl_inventory.s
+
+# target to generate assembly for a file
+src/client/cl_inventory.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_inventory.c.s
+.PHONY : src/client/cl_inventory.c.s
+
+src/client/cl_keyboard.o: src/client/cl_keyboard.c.o
+.PHONY : src/client/cl_keyboard.o
+
+# target to build an object file
+src/client/cl_keyboard.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_keyboard.c.o
+.PHONY : src/client/cl_keyboard.c.o
+
+src/client/cl_keyboard.i: src/client/cl_keyboard.c.i
+.PHONY : src/client/cl_keyboard.i
+
+# target to preprocess a source file
+src/client/cl_keyboard.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_keyboard.c.i
+.PHONY : src/client/cl_keyboard.c.i
+
+src/client/cl_keyboard.s: src/client/cl_keyboard.c.s
+.PHONY : src/client/cl_keyboard.s
+
+# target to generate assembly for a file
+src/client/cl_keyboard.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_keyboard.c.s
+.PHONY : src/client/cl_keyboard.c.s
+
+src/client/cl_lights.o: src/client/cl_lights.c.o
+.PHONY : src/client/cl_lights.o
+
+# target to build an object file
+src/client/cl_lights.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_lights.c.o
+.PHONY : src/client/cl_lights.c.o
+
+src/client/cl_lights.i: src/client/cl_lights.c.i
+.PHONY : src/client/cl_lights.i
+
+# target to preprocess a source file
+src/client/cl_lights.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_lights.c.i
+.PHONY : src/client/cl_lights.c.i
+
+src/client/cl_lights.s: src/client/cl_lights.c.s
+.PHONY : src/client/cl_lights.s
+
+# target to generate assembly for a file
+src/client/cl_lights.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_lights.c.s
+.PHONY : src/client/cl_lights.c.s
+
+src/client/cl_main.o: src/client/cl_main.c.o
+.PHONY : src/client/cl_main.o
+
+# target to build an object file
+src/client/cl_main.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_main.c.o
+.PHONY : src/client/cl_main.c.o
+
+src/client/cl_main.i: src/client/cl_main.c.i
+.PHONY : src/client/cl_main.i
+
+# target to preprocess a source file
+src/client/cl_main.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_main.c.i
+.PHONY : src/client/cl_main.c.i
+
+src/client/cl_main.s: src/client/cl_main.c.s
+.PHONY : src/client/cl_main.s
+
+# target to generate assembly for a file
+src/client/cl_main.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_main.c.s
+.PHONY : src/client/cl_main.c.s
+
+src/client/cl_network.o: src/client/cl_network.c.o
+.PHONY : src/client/cl_network.o
+
+# target to build an object file
+src/client/cl_network.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_network.c.o
+.PHONY : src/client/cl_network.c.o
+
+src/client/cl_network.i: src/client/cl_network.c.i
+.PHONY : src/client/cl_network.i
+
+# target to preprocess a source file
+src/client/cl_network.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_network.c.i
+.PHONY : src/client/cl_network.c.i
+
+src/client/cl_network.s: src/client/cl_network.c.s
+.PHONY : src/client/cl_network.s
+
+# target to generate assembly for a file
+src/client/cl_network.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_network.c.s
+.PHONY : src/client/cl_network.c.s
+
+src/client/cl_parse.o: src/client/cl_parse.c.o
+.PHONY : src/client/cl_parse.o
+
+# target to build an object file
+src/client/cl_parse.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_parse.c.o
+.PHONY : src/client/cl_parse.c.o
+
+src/client/cl_parse.i: src/client/cl_parse.c.i
+.PHONY : src/client/cl_parse.i
+
+# target to preprocess a source file
+src/client/cl_parse.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_parse.c.i
+.PHONY : src/client/cl_parse.c.i
+
+src/client/cl_parse.s: src/client/cl_parse.c.s
+.PHONY : src/client/cl_parse.s
+
+# target to generate assembly for a file
+src/client/cl_parse.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_parse.c.s
+.PHONY : src/client/cl_parse.c.s
+
+src/client/cl_particles.o: src/client/cl_particles.c.o
+.PHONY : src/client/cl_particles.o
+
+# target to build an object file
+src/client/cl_particles.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_particles.c.o
+.PHONY : src/client/cl_particles.c.o
+
+src/client/cl_particles.i: src/client/cl_particles.c.i
+.PHONY : src/client/cl_particles.i
+
+# target to preprocess a source file
+src/client/cl_particles.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_particles.c.i
+.PHONY : src/client/cl_particles.c.i
+
+src/client/cl_particles.s: src/client/cl_particles.c.s
+.PHONY : src/client/cl_particles.s
+
+# target to generate assembly for a file
+src/client/cl_particles.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_particles.c.s
+.PHONY : src/client/cl_particles.c.s
+
+src/client/cl_prediction.o: src/client/cl_prediction.c.o
+.PHONY : src/client/cl_prediction.o
+
+# target to build an object file
+src/client/cl_prediction.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_prediction.c.o
+.PHONY : src/client/cl_prediction.c.o
+
+src/client/cl_prediction.i: src/client/cl_prediction.c.i
+.PHONY : src/client/cl_prediction.i
+
+# target to preprocess a source file
+src/client/cl_prediction.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_prediction.c.i
+.PHONY : src/client/cl_prediction.c.i
+
+src/client/cl_prediction.s: src/client/cl_prediction.c.s
+.PHONY : src/client/cl_prediction.s
+
+# target to generate assembly for a file
+src/client/cl_prediction.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_prediction.c.s
+.PHONY : src/client/cl_prediction.c.s
+
+src/client/cl_screen.o: src/client/cl_screen.c.o
+.PHONY : src/client/cl_screen.o
+
+# target to build an object file
+src/client/cl_screen.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_screen.c.o
+.PHONY : src/client/cl_screen.c.o
+
+src/client/cl_screen.i: src/client/cl_screen.c.i
+.PHONY : src/client/cl_screen.i
+
+# target to preprocess a source file
+src/client/cl_screen.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_screen.c.i
+.PHONY : src/client/cl_screen.c.i
+
+src/client/cl_screen.s: src/client/cl_screen.c.s
+.PHONY : src/client/cl_screen.s
+
+# target to generate assembly for a file
+src/client/cl_screen.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_screen.c.s
+.PHONY : src/client/cl_screen.c.s
+
+src/client/cl_tempentities.o: src/client/cl_tempentities.c.o
+.PHONY : src/client/cl_tempentities.o
+
+# target to build an object file
+src/client/cl_tempentities.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_tempentities.c.o
+.PHONY : src/client/cl_tempentities.c.o
+
+src/client/cl_tempentities.i: src/client/cl_tempentities.c.i
+.PHONY : src/client/cl_tempentities.i
+
+# target to preprocess a source file
+src/client/cl_tempentities.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_tempentities.c.i
+.PHONY : src/client/cl_tempentities.c.i
+
+src/client/cl_tempentities.s: src/client/cl_tempentities.c.s
+.PHONY : src/client/cl_tempentities.s
+
+# target to generate assembly for a file
+src/client/cl_tempentities.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_tempentities.c.s
+.PHONY : src/client/cl_tempentities.c.s
+
+src/client/cl_view.o: src/client/cl_view.c.o
+.PHONY : src/client/cl_view.o
+
+# target to build an object file
+src/client/cl_view.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_view.c.o
+.PHONY : src/client/cl_view.c.o
+
+src/client/cl_view.i: src/client/cl_view.c.i
+.PHONY : src/client/cl_view.i
+
+# target to preprocess a source file
+src/client/cl_view.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_view.c.i
+.PHONY : src/client/cl_view.c.i
+
+src/client/cl_view.s: src/client/cl_view.c.s
+.PHONY : src/client/cl_view.s
+
+# target to generate assembly for a file
+src/client/cl_view.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/cl_view.c.s
+.PHONY : src/client/cl_view.c.s
+
+src/client/curl/download.o: src/client/curl/download.c.o
+.PHONY : src/client/curl/download.o
+
+# target to build an object file
+src/client/curl/download.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/curl/download.c.o
+.PHONY : src/client/curl/download.c.o
+
+src/client/curl/download.i: src/client/curl/download.c.i
+.PHONY : src/client/curl/download.i
+
+# target to preprocess a source file
+src/client/curl/download.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/curl/download.c.i
+.PHONY : src/client/curl/download.c.i
+
+src/client/curl/download.s: src/client/curl/download.c.s
+.PHONY : src/client/curl/download.s
+
+# target to generate assembly for a file
+src/client/curl/download.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/curl/download.c.s
+.PHONY : src/client/curl/download.c.s
+
+src/client/curl/qcurl.o: src/client/curl/qcurl.c.o
+.PHONY : src/client/curl/qcurl.o
+
+# target to build an object file
+src/client/curl/qcurl.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/curl/qcurl.c.o
+.PHONY : src/client/curl/qcurl.c.o
+
+src/client/curl/qcurl.i: src/client/curl/qcurl.c.i
+.PHONY : src/client/curl/qcurl.i
+
+# target to preprocess a source file
+src/client/curl/qcurl.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/curl/qcurl.c.i
+.PHONY : src/client/curl/qcurl.c.i
+
+src/client/curl/qcurl.s: src/client/curl/qcurl.c.s
+.PHONY : src/client/curl/qcurl.s
+
+# target to generate assembly for a file
+src/client/curl/qcurl.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/curl/qcurl.c.s
+.PHONY : src/client/curl/qcurl.c.s
+
+src/client/input/sdl.o: src/client/input/sdl.c.o
+.PHONY : src/client/input/sdl.o
+
+# target to build an object file
+src/client/input/sdl.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/input/sdl.c.o
+.PHONY : src/client/input/sdl.c.o
+
+src/client/input/sdl.i: src/client/input/sdl.c.i
+.PHONY : src/client/input/sdl.i
+
+# target to preprocess a source file
+src/client/input/sdl.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/input/sdl.c.i
+.PHONY : src/client/input/sdl.c.i
+
+src/client/input/sdl.s: src/client/input/sdl.c.s
+.PHONY : src/client/input/sdl.s
+
+# target to generate assembly for a file
+src/client/input/sdl.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/input/sdl.c.s
+.PHONY : src/client/input/sdl.c.s
+
+src/client/menu/menu.o: src/client/menu/menu.c.o
+.PHONY : src/client/menu/menu.o
+
+# target to build an object file
+src/client/menu/menu.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/menu/menu.c.o
+.PHONY : src/client/menu/menu.c.o
+
+src/client/menu/menu.i: src/client/menu/menu.c.i
+.PHONY : src/client/menu/menu.i
+
+# target to preprocess a source file
+src/client/menu/menu.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/menu/menu.c.i
+.PHONY : src/client/menu/menu.c.i
+
+src/client/menu/menu.s: src/client/menu/menu.c.s
+.PHONY : src/client/menu/menu.s
+
+# target to generate assembly for a file
+src/client/menu/menu.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/menu/menu.c.s
+.PHONY : src/client/menu/menu.c.s
+
+src/client/menu/qmenu.o: src/client/menu/qmenu.c.o
+.PHONY : src/client/menu/qmenu.o
+
+# target to build an object file
+src/client/menu/qmenu.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/menu/qmenu.c.o
+.PHONY : src/client/menu/qmenu.c.o
+
+src/client/menu/qmenu.i: src/client/menu/qmenu.c.i
+.PHONY : src/client/menu/qmenu.i
+
+# target to preprocess a source file
+src/client/menu/qmenu.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/menu/qmenu.c.i
+.PHONY : src/client/menu/qmenu.c.i
+
+src/client/menu/qmenu.s: src/client/menu/qmenu.c.s
+.PHONY : src/client/menu/qmenu.s
+
+# target to generate assembly for a file
+src/client/menu/qmenu.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/menu/qmenu.c.s
+.PHONY : src/client/menu/qmenu.c.s
+
+src/client/menu/videomenu.o: src/client/menu/videomenu.c.o
+.PHONY : src/client/menu/videomenu.o
+
+# target to build an object file
+src/client/menu/videomenu.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/menu/videomenu.c.o
+.PHONY : src/client/menu/videomenu.c.o
+
+src/client/menu/videomenu.i: src/client/menu/videomenu.c.i
+.PHONY : src/client/menu/videomenu.i
+
+# target to preprocess a source file
+src/client/menu/videomenu.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/menu/videomenu.c.i
+.PHONY : src/client/menu/videomenu.c.i
+
+src/client/menu/videomenu.s: src/client/menu/videomenu.c.s
+.PHONY : src/client/menu/videomenu.s
+
+# target to generate assembly for a file
+src/client/menu/videomenu.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/menu/videomenu.c.s
+.PHONY : src/client/menu/videomenu.c.s
+
+src/client/refresh/files/models.o: src/client/refresh/files/models.c.o
+.PHONY : src/client/refresh/files/models.o
+
+# target to build an object file
+src/client/refresh/files/models.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/files/models.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/files/models.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/files/models.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/files/models.c.o
+.PHONY : src/client/refresh/files/models.c.o
+
+src/client/refresh/files/models.i: src/client/refresh/files/models.c.i
+.PHONY : src/client/refresh/files/models.i
+
+# target to preprocess a source file
+src/client/refresh/files/models.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/files/models.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/files/models.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/files/models.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/files/models.c.i
+.PHONY : src/client/refresh/files/models.c.i
+
+src/client/refresh/files/models.s: src/client/refresh/files/models.c.s
+.PHONY : src/client/refresh/files/models.s
+
+# target to generate assembly for a file
+src/client/refresh/files/models.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/files/models.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/files/models.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/files/models.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/files/models.c.s
+.PHONY : src/client/refresh/files/models.c.s
+
+src/client/refresh/files/pcx.o: src/client/refresh/files/pcx.c.o
+.PHONY : src/client/refresh/files/pcx.o
+
+# target to build an object file
+src/client/refresh/files/pcx.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/files/pcx.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/files/pcx.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/files/pcx.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/files/pcx.c.o
+.PHONY : src/client/refresh/files/pcx.c.o
+
+src/client/refresh/files/pcx.i: src/client/refresh/files/pcx.c.i
+.PHONY : src/client/refresh/files/pcx.i
+
+# target to preprocess a source file
+src/client/refresh/files/pcx.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/files/pcx.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/files/pcx.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/files/pcx.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/files/pcx.c.i
+.PHONY : src/client/refresh/files/pcx.c.i
+
+src/client/refresh/files/pcx.s: src/client/refresh/files/pcx.c.s
+.PHONY : src/client/refresh/files/pcx.s
+
+# target to generate assembly for a file
+src/client/refresh/files/pcx.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/files/pcx.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/files/pcx.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/files/pcx.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/files/pcx.c.s
+.PHONY : src/client/refresh/files/pcx.c.s
+
+src/client/refresh/files/pvs.o: src/client/refresh/files/pvs.c.o
+.PHONY : src/client/refresh/files/pvs.o
+
+# target to build an object file
+src/client/refresh/files/pvs.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/files/pvs.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/files/pvs.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/files/pvs.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/files/pvs.c.o
+.PHONY : src/client/refresh/files/pvs.c.o
+
+src/client/refresh/files/pvs.i: src/client/refresh/files/pvs.c.i
+.PHONY : src/client/refresh/files/pvs.i
+
+# target to preprocess a source file
+src/client/refresh/files/pvs.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/files/pvs.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/files/pvs.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/files/pvs.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/files/pvs.c.i
+.PHONY : src/client/refresh/files/pvs.c.i
+
+src/client/refresh/files/pvs.s: src/client/refresh/files/pvs.c.s
+.PHONY : src/client/refresh/files/pvs.s
+
+# target to generate assembly for a file
+src/client/refresh/files/pvs.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/files/pvs.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/files/pvs.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/files/pvs.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/files/pvs.c.s
+.PHONY : src/client/refresh/files/pvs.c.s
+
+src/client/refresh/files/stb.o: src/client/refresh/files/stb.c.o
+.PHONY : src/client/refresh/files/stb.o
+
+# target to build an object file
+src/client/refresh/files/stb.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/files/stb.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/files/stb.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/files/stb.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/files/stb.c.o
+.PHONY : src/client/refresh/files/stb.c.o
+
+src/client/refresh/files/stb.i: src/client/refresh/files/stb.c.i
+.PHONY : src/client/refresh/files/stb.i
+
+# target to preprocess a source file
+src/client/refresh/files/stb.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/files/stb.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/files/stb.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/files/stb.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/files/stb.c.i
+.PHONY : src/client/refresh/files/stb.c.i
+
+src/client/refresh/files/stb.s: src/client/refresh/files/stb.c.s
+.PHONY : src/client/refresh/files/stb.s
+
+# target to generate assembly for a file
+src/client/refresh/files/stb.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/files/stb.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/files/stb.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/files/stb.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/files/stb.c.s
+.PHONY : src/client/refresh/files/stb.c.s
+
+src/client/refresh/files/surf.o: src/client/refresh/files/surf.c.o
+.PHONY : src/client/refresh/files/surf.o
+
+# target to build an object file
+src/client/refresh/files/surf.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/files/surf.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/files/surf.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/files/surf.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/files/surf.c.o
+.PHONY : src/client/refresh/files/surf.c.o
+
+src/client/refresh/files/surf.i: src/client/refresh/files/surf.c.i
+.PHONY : src/client/refresh/files/surf.i
+
+# target to preprocess a source file
+src/client/refresh/files/surf.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/files/surf.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/files/surf.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/files/surf.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/files/surf.c.i
+.PHONY : src/client/refresh/files/surf.c.i
+
+src/client/refresh/files/surf.s: src/client/refresh/files/surf.c.s
+.PHONY : src/client/refresh/files/surf.s
+
+# target to generate assembly for a file
+src/client/refresh/files/surf.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/files/surf.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/files/surf.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/files/surf.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/files/surf.c.s
+.PHONY : src/client/refresh/files/surf.c.s
+
+src/client/refresh/files/wal.o: src/client/refresh/files/wal.c.o
+.PHONY : src/client/refresh/files/wal.o
+
+# target to build an object file
+src/client/refresh/files/wal.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/files/wal.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/files/wal.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/files/wal.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/files/wal.c.o
+.PHONY : src/client/refresh/files/wal.c.o
+
+src/client/refresh/files/wal.i: src/client/refresh/files/wal.c.i
+.PHONY : src/client/refresh/files/wal.i
+
+# target to preprocess a source file
+src/client/refresh/files/wal.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/files/wal.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/files/wal.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/files/wal.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/files/wal.c.i
+.PHONY : src/client/refresh/files/wal.c.i
+
+src/client/refresh/files/wal.s: src/client/refresh/files/wal.c.s
+.PHONY : src/client/refresh/files/wal.s
+
+# target to generate assembly for a file
+src/client/refresh/files/wal.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/files/wal.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/files/wal.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/files/wal.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/files/wal.c.s
+.PHONY : src/client/refresh/files/wal.c.s
+
+src/client/refresh/gl1/gl1_draw.o: src/client/refresh/gl1/gl1_draw.c.o
+.PHONY : src/client/refresh/gl1/gl1_draw.o
+
+# target to build an object file
+src/client/refresh/gl1/gl1_draw.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_draw.c.o
+.PHONY : src/client/refresh/gl1/gl1_draw.c.o
+
+src/client/refresh/gl1/gl1_draw.i: src/client/refresh/gl1/gl1_draw.c.i
+.PHONY : src/client/refresh/gl1/gl1_draw.i
+
+# target to preprocess a source file
+src/client/refresh/gl1/gl1_draw.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_draw.c.i
+.PHONY : src/client/refresh/gl1/gl1_draw.c.i
+
+src/client/refresh/gl1/gl1_draw.s: src/client/refresh/gl1/gl1_draw.c.s
+.PHONY : src/client/refresh/gl1/gl1_draw.s
+
+# target to generate assembly for a file
+src/client/refresh/gl1/gl1_draw.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_draw.c.s
+.PHONY : src/client/refresh/gl1/gl1_draw.c.s
+
+src/client/refresh/gl1/gl1_image.o: src/client/refresh/gl1/gl1_image.c.o
+.PHONY : src/client/refresh/gl1/gl1_image.o
+
+# target to build an object file
+src/client/refresh/gl1/gl1_image.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_image.c.o
+.PHONY : src/client/refresh/gl1/gl1_image.c.o
+
+src/client/refresh/gl1/gl1_image.i: src/client/refresh/gl1/gl1_image.c.i
+.PHONY : src/client/refresh/gl1/gl1_image.i
+
+# target to preprocess a source file
+src/client/refresh/gl1/gl1_image.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_image.c.i
+.PHONY : src/client/refresh/gl1/gl1_image.c.i
+
+src/client/refresh/gl1/gl1_image.s: src/client/refresh/gl1/gl1_image.c.s
+.PHONY : src/client/refresh/gl1/gl1_image.s
+
+# target to generate assembly for a file
+src/client/refresh/gl1/gl1_image.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_image.c.s
+.PHONY : src/client/refresh/gl1/gl1_image.c.s
+
+src/client/refresh/gl1/gl1_light.o: src/client/refresh/gl1/gl1_light.c.o
+.PHONY : src/client/refresh/gl1/gl1_light.o
+
+# target to build an object file
+src/client/refresh/gl1/gl1_light.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_light.c.o
+.PHONY : src/client/refresh/gl1/gl1_light.c.o
+
+src/client/refresh/gl1/gl1_light.i: src/client/refresh/gl1/gl1_light.c.i
+.PHONY : src/client/refresh/gl1/gl1_light.i
+
+# target to preprocess a source file
+src/client/refresh/gl1/gl1_light.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_light.c.i
+.PHONY : src/client/refresh/gl1/gl1_light.c.i
+
+src/client/refresh/gl1/gl1_light.s: src/client/refresh/gl1/gl1_light.c.s
+.PHONY : src/client/refresh/gl1/gl1_light.s
+
+# target to generate assembly for a file
+src/client/refresh/gl1/gl1_light.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_light.c.s
+.PHONY : src/client/refresh/gl1/gl1_light.c.s
+
+src/client/refresh/gl1/gl1_lightmap.o: src/client/refresh/gl1/gl1_lightmap.c.o
+.PHONY : src/client/refresh/gl1/gl1_lightmap.o
+
+# target to build an object file
+src/client/refresh/gl1/gl1_lightmap.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_lightmap.c.o
+.PHONY : src/client/refresh/gl1/gl1_lightmap.c.o
+
+src/client/refresh/gl1/gl1_lightmap.i: src/client/refresh/gl1/gl1_lightmap.c.i
+.PHONY : src/client/refresh/gl1/gl1_lightmap.i
+
+# target to preprocess a source file
+src/client/refresh/gl1/gl1_lightmap.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_lightmap.c.i
+.PHONY : src/client/refresh/gl1/gl1_lightmap.c.i
+
+src/client/refresh/gl1/gl1_lightmap.s: src/client/refresh/gl1/gl1_lightmap.c.s
+.PHONY : src/client/refresh/gl1/gl1_lightmap.s
+
+# target to generate assembly for a file
+src/client/refresh/gl1/gl1_lightmap.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_lightmap.c.s
+.PHONY : src/client/refresh/gl1/gl1_lightmap.c.s
+
+src/client/refresh/gl1/gl1_main.o: src/client/refresh/gl1/gl1_main.c.o
+.PHONY : src/client/refresh/gl1/gl1_main.o
+
+# target to build an object file
+src/client/refresh/gl1/gl1_main.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_main.c.o
+.PHONY : src/client/refresh/gl1/gl1_main.c.o
+
+src/client/refresh/gl1/gl1_main.i: src/client/refresh/gl1/gl1_main.c.i
+.PHONY : src/client/refresh/gl1/gl1_main.i
+
+# target to preprocess a source file
+src/client/refresh/gl1/gl1_main.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_main.c.i
+.PHONY : src/client/refresh/gl1/gl1_main.c.i
+
+src/client/refresh/gl1/gl1_main.s: src/client/refresh/gl1/gl1_main.c.s
+.PHONY : src/client/refresh/gl1/gl1_main.s
+
+# target to generate assembly for a file
+src/client/refresh/gl1/gl1_main.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_main.c.s
+.PHONY : src/client/refresh/gl1/gl1_main.c.s
+
+src/client/refresh/gl1/gl1_mesh.o: src/client/refresh/gl1/gl1_mesh.c.o
+.PHONY : src/client/refresh/gl1/gl1_mesh.o
+
+# target to build an object file
+src/client/refresh/gl1/gl1_mesh.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_mesh.c.o
+.PHONY : src/client/refresh/gl1/gl1_mesh.c.o
+
+src/client/refresh/gl1/gl1_mesh.i: src/client/refresh/gl1/gl1_mesh.c.i
+.PHONY : src/client/refresh/gl1/gl1_mesh.i
+
+# target to preprocess a source file
+src/client/refresh/gl1/gl1_mesh.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_mesh.c.i
+.PHONY : src/client/refresh/gl1/gl1_mesh.c.i
+
+src/client/refresh/gl1/gl1_mesh.s: src/client/refresh/gl1/gl1_mesh.c.s
+.PHONY : src/client/refresh/gl1/gl1_mesh.s
+
+# target to generate assembly for a file
+src/client/refresh/gl1/gl1_mesh.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_mesh.c.s
+.PHONY : src/client/refresh/gl1/gl1_mesh.c.s
+
+src/client/refresh/gl1/gl1_misc.o: src/client/refresh/gl1/gl1_misc.c.o
+.PHONY : src/client/refresh/gl1/gl1_misc.o
+
+# target to build an object file
+src/client/refresh/gl1/gl1_misc.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_misc.c.o
+.PHONY : src/client/refresh/gl1/gl1_misc.c.o
+
+src/client/refresh/gl1/gl1_misc.i: src/client/refresh/gl1/gl1_misc.c.i
+.PHONY : src/client/refresh/gl1/gl1_misc.i
+
+# target to preprocess a source file
+src/client/refresh/gl1/gl1_misc.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_misc.c.i
+.PHONY : src/client/refresh/gl1/gl1_misc.c.i
+
+src/client/refresh/gl1/gl1_misc.s: src/client/refresh/gl1/gl1_misc.c.s
+.PHONY : src/client/refresh/gl1/gl1_misc.s
+
+# target to generate assembly for a file
+src/client/refresh/gl1/gl1_misc.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_misc.c.s
+.PHONY : src/client/refresh/gl1/gl1_misc.c.s
+
+src/client/refresh/gl1/gl1_model.o: src/client/refresh/gl1/gl1_model.c.o
+.PHONY : src/client/refresh/gl1/gl1_model.o
+
+# target to build an object file
+src/client/refresh/gl1/gl1_model.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_model.c.o
+.PHONY : src/client/refresh/gl1/gl1_model.c.o
+
+src/client/refresh/gl1/gl1_model.i: src/client/refresh/gl1/gl1_model.c.i
+.PHONY : src/client/refresh/gl1/gl1_model.i
+
+# target to preprocess a source file
+src/client/refresh/gl1/gl1_model.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_model.c.i
+.PHONY : src/client/refresh/gl1/gl1_model.c.i
+
+src/client/refresh/gl1/gl1_model.s: src/client/refresh/gl1/gl1_model.c.s
+.PHONY : src/client/refresh/gl1/gl1_model.s
+
+# target to generate assembly for a file
+src/client/refresh/gl1/gl1_model.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_model.c.s
+.PHONY : src/client/refresh/gl1/gl1_model.c.s
+
+src/client/refresh/gl1/gl1_scrap.o: src/client/refresh/gl1/gl1_scrap.c.o
+.PHONY : src/client/refresh/gl1/gl1_scrap.o
+
+# target to build an object file
+src/client/refresh/gl1/gl1_scrap.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_scrap.c.o
+.PHONY : src/client/refresh/gl1/gl1_scrap.c.o
+
+src/client/refresh/gl1/gl1_scrap.i: src/client/refresh/gl1/gl1_scrap.c.i
+.PHONY : src/client/refresh/gl1/gl1_scrap.i
+
+# target to preprocess a source file
+src/client/refresh/gl1/gl1_scrap.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_scrap.c.i
+.PHONY : src/client/refresh/gl1/gl1_scrap.c.i
+
+src/client/refresh/gl1/gl1_scrap.s: src/client/refresh/gl1/gl1_scrap.c.s
+.PHONY : src/client/refresh/gl1/gl1_scrap.s
+
+# target to generate assembly for a file
+src/client/refresh/gl1/gl1_scrap.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_scrap.c.s
+.PHONY : src/client/refresh/gl1/gl1_scrap.c.s
+
+src/client/refresh/gl1/gl1_sdl.o: src/client/refresh/gl1/gl1_sdl.c.o
+.PHONY : src/client/refresh/gl1/gl1_sdl.o
+
+# target to build an object file
+src/client/refresh/gl1/gl1_sdl.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_sdl.c.o
+.PHONY : src/client/refresh/gl1/gl1_sdl.c.o
+
+src/client/refresh/gl1/gl1_sdl.i: src/client/refresh/gl1/gl1_sdl.c.i
+.PHONY : src/client/refresh/gl1/gl1_sdl.i
+
+# target to preprocess a source file
+src/client/refresh/gl1/gl1_sdl.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_sdl.c.i
+.PHONY : src/client/refresh/gl1/gl1_sdl.c.i
+
+src/client/refresh/gl1/gl1_sdl.s: src/client/refresh/gl1/gl1_sdl.c.s
+.PHONY : src/client/refresh/gl1/gl1_sdl.s
+
+# target to generate assembly for a file
+src/client/refresh/gl1/gl1_sdl.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_sdl.c.s
+.PHONY : src/client/refresh/gl1/gl1_sdl.c.s
+
+src/client/refresh/gl1/gl1_surf.o: src/client/refresh/gl1/gl1_surf.c.o
+.PHONY : src/client/refresh/gl1/gl1_surf.o
+
+# target to build an object file
+src/client/refresh/gl1/gl1_surf.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_surf.c.o
+.PHONY : src/client/refresh/gl1/gl1_surf.c.o
+
+src/client/refresh/gl1/gl1_surf.i: src/client/refresh/gl1/gl1_surf.c.i
+.PHONY : src/client/refresh/gl1/gl1_surf.i
+
+# target to preprocess a source file
+src/client/refresh/gl1/gl1_surf.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_surf.c.i
+.PHONY : src/client/refresh/gl1/gl1_surf.c.i
+
+src/client/refresh/gl1/gl1_surf.s: src/client/refresh/gl1/gl1_surf.c.s
+.PHONY : src/client/refresh/gl1/gl1_surf.s
+
+# target to generate assembly for a file
+src/client/refresh/gl1/gl1_surf.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_surf.c.s
+.PHONY : src/client/refresh/gl1/gl1_surf.c.s
+
+src/client/refresh/gl1/gl1_warp.o: src/client/refresh/gl1/gl1_warp.c.o
+.PHONY : src/client/refresh/gl1/gl1_warp.o
+
+# target to build an object file
+src/client/refresh/gl1/gl1_warp.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_warp.c.o
+.PHONY : src/client/refresh/gl1/gl1_warp.c.o
+
+src/client/refresh/gl1/gl1_warp.i: src/client/refresh/gl1/gl1_warp.c.i
+.PHONY : src/client/refresh/gl1/gl1_warp.i
+
+# target to preprocess a source file
+src/client/refresh/gl1/gl1_warp.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_warp.c.i
+.PHONY : src/client/refresh/gl1/gl1_warp.c.i
+
+src/client/refresh/gl1/gl1_warp.s: src/client/refresh/gl1/gl1_warp.c.s
+.PHONY : src/client/refresh/gl1/gl1_warp.s
+
+# target to generate assembly for a file
+src/client/refresh/gl1/gl1_warp.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/gl1_warp.c.s
+.PHONY : src/client/refresh/gl1/gl1_warp.c.s
+
+src/client/refresh/gl1/qgl.o: src/client/refresh/gl1/qgl.c.o
+.PHONY : src/client/refresh/gl1/qgl.o
+
+# target to build an object file
+src/client/refresh/gl1/qgl.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/qgl.c.o
+.PHONY : src/client/refresh/gl1/qgl.c.o
+
+src/client/refresh/gl1/qgl.i: src/client/refresh/gl1/qgl.c.i
+.PHONY : src/client/refresh/gl1/qgl.i
+
+# target to preprocess a source file
+src/client/refresh/gl1/qgl.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/qgl.c.i
+.PHONY : src/client/refresh/gl1/qgl.c.i
+
+src/client/refresh/gl1/qgl.s: src/client/refresh/gl1/qgl.c.s
+.PHONY : src/client/refresh/gl1/qgl.s
+
+# target to generate assembly for a file
+src/client/refresh/gl1/qgl.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/client/refresh/gl1/qgl.c.s
+.PHONY : src/client/refresh/gl1/qgl.c.s
+
+src/client/refresh/gl3/gl3_draw.o: src/client/refresh/gl3/gl3_draw.c.o
+.PHONY : src/client/refresh/gl3/gl3_draw.o
+
+# target to build an object file
+src/client/refresh/gl3/gl3_draw.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_draw.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_draw.c.o
+.PHONY : src/client/refresh/gl3/gl3_draw.c.o
+
+src/client/refresh/gl3/gl3_draw.i: src/client/refresh/gl3/gl3_draw.c.i
+.PHONY : src/client/refresh/gl3/gl3_draw.i
+
+# target to preprocess a source file
+src/client/refresh/gl3/gl3_draw.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_draw.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_draw.c.i
+.PHONY : src/client/refresh/gl3/gl3_draw.c.i
+
+src/client/refresh/gl3/gl3_draw.s: src/client/refresh/gl3/gl3_draw.c.s
+.PHONY : src/client/refresh/gl3/gl3_draw.s
+
+# target to generate assembly for a file
+src/client/refresh/gl3/gl3_draw.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_draw.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_draw.c.s
+.PHONY : src/client/refresh/gl3/gl3_draw.c.s
+
+src/client/refresh/gl3/gl3_image.o: src/client/refresh/gl3/gl3_image.c.o
+.PHONY : src/client/refresh/gl3/gl3_image.o
+
+# target to build an object file
+src/client/refresh/gl3/gl3_image.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_image.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_image.c.o
+.PHONY : src/client/refresh/gl3/gl3_image.c.o
+
+src/client/refresh/gl3/gl3_image.i: src/client/refresh/gl3/gl3_image.c.i
+.PHONY : src/client/refresh/gl3/gl3_image.i
+
+# target to preprocess a source file
+src/client/refresh/gl3/gl3_image.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_image.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_image.c.i
+.PHONY : src/client/refresh/gl3/gl3_image.c.i
+
+src/client/refresh/gl3/gl3_image.s: src/client/refresh/gl3/gl3_image.c.s
+.PHONY : src/client/refresh/gl3/gl3_image.s
+
+# target to generate assembly for a file
+src/client/refresh/gl3/gl3_image.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_image.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_image.c.s
+.PHONY : src/client/refresh/gl3/gl3_image.c.s
+
+src/client/refresh/gl3/gl3_light.o: src/client/refresh/gl3/gl3_light.c.o
+.PHONY : src/client/refresh/gl3/gl3_light.o
+
+# target to build an object file
+src/client/refresh/gl3/gl3_light.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_light.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_light.c.o
+.PHONY : src/client/refresh/gl3/gl3_light.c.o
+
+src/client/refresh/gl3/gl3_light.i: src/client/refresh/gl3/gl3_light.c.i
+.PHONY : src/client/refresh/gl3/gl3_light.i
+
+# target to preprocess a source file
+src/client/refresh/gl3/gl3_light.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_light.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_light.c.i
+.PHONY : src/client/refresh/gl3/gl3_light.c.i
+
+src/client/refresh/gl3/gl3_light.s: src/client/refresh/gl3/gl3_light.c.s
+.PHONY : src/client/refresh/gl3/gl3_light.s
+
+# target to generate assembly for a file
+src/client/refresh/gl3/gl3_light.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_light.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_light.c.s
+.PHONY : src/client/refresh/gl3/gl3_light.c.s
+
+src/client/refresh/gl3/gl3_lightmap.o: src/client/refresh/gl3/gl3_lightmap.c.o
+.PHONY : src/client/refresh/gl3/gl3_lightmap.o
+
+# target to build an object file
+src/client/refresh/gl3/gl3_lightmap.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_lightmap.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_lightmap.c.o
+.PHONY : src/client/refresh/gl3/gl3_lightmap.c.o
+
+src/client/refresh/gl3/gl3_lightmap.i: src/client/refresh/gl3/gl3_lightmap.c.i
+.PHONY : src/client/refresh/gl3/gl3_lightmap.i
+
+# target to preprocess a source file
+src/client/refresh/gl3/gl3_lightmap.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_lightmap.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_lightmap.c.i
+.PHONY : src/client/refresh/gl3/gl3_lightmap.c.i
+
+src/client/refresh/gl3/gl3_lightmap.s: src/client/refresh/gl3/gl3_lightmap.c.s
+.PHONY : src/client/refresh/gl3/gl3_lightmap.s
+
+# target to generate assembly for a file
+src/client/refresh/gl3/gl3_lightmap.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_lightmap.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_lightmap.c.s
+.PHONY : src/client/refresh/gl3/gl3_lightmap.c.s
+
+src/client/refresh/gl3/gl3_main.o: src/client/refresh/gl3/gl3_main.c.o
+.PHONY : src/client/refresh/gl3/gl3_main.o
+
+# target to build an object file
+src/client/refresh/gl3/gl3_main.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_main.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_main.c.o
+.PHONY : src/client/refresh/gl3/gl3_main.c.o
+
+src/client/refresh/gl3/gl3_main.i: src/client/refresh/gl3/gl3_main.c.i
+.PHONY : src/client/refresh/gl3/gl3_main.i
+
+# target to preprocess a source file
+src/client/refresh/gl3/gl3_main.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_main.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_main.c.i
+.PHONY : src/client/refresh/gl3/gl3_main.c.i
+
+src/client/refresh/gl3/gl3_main.s: src/client/refresh/gl3/gl3_main.c.s
+.PHONY : src/client/refresh/gl3/gl3_main.s
+
+# target to generate assembly for a file
+src/client/refresh/gl3/gl3_main.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_main.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_main.c.s
+.PHONY : src/client/refresh/gl3/gl3_main.c.s
+
+src/client/refresh/gl3/gl3_mesh.o: src/client/refresh/gl3/gl3_mesh.c.o
+.PHONY : src/client/refresh/gl3/gl3_mesh.o
+
+# target to build an object file
+src/client/refresh/gl3/gl3_mesh.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_mesh.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_mesh.c.o
+.PHONY : src/client/refresh/gl3/gl3_mesh.c.o
+
+src/client/refresh/gl3/gl3_mesh.i: src/client/refresh/gl3/gl3_mesh.c.i
+.PHONY : src/client/refresh/gl3/gl3_mesh.i
+
+# target to preprocess a source file
+src/client/refresh/gl3/gl3_mesh.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_mesh.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_mesh.c.i
+.PHONY : src/client/refresh/gl3/gl3_mesh.c.i
+
+src/client/refresh/gl3/gl3_mesh.s: src/client/refresh/gl3/gl3_mesh.c.s
+.PHONY : src/client/refresh/gl3/gl3_mesh.s
+
+# target to generate assembly for a file
+src/client/refresh/gl3/gl3_mesh.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_mesh.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_mesh.c.s
+.PHONY : src/client/refresh/gl3/gl3_mesh.c.s
+
+src/client/refresh/gl3/gl3_misc.o: src/client/refresh/gl3/gl3_misc.c.o
+.PHONY : src/client/refresh/gl3/gl3_misc.o
+
+# target to build an object file
+src/client/refresh/gl3/gl3_misc.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_misc.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_misc.c.o
+.PHONY : src/client/refresh/gl3/gl3_misc.c.o
+
+src/client/refresh/gl3/gl3_misc.i: src/client/refresh/gl3/gl3_misc.c.i
+.PHONY : src/client/refresh/gl3/gl3_misc.i
+
+# target to preprocess a source file
+src/client/refresh/gl3/gl3_misc.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_misc.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_misc.c.i
+.PHONY : src/client/refresh/gl3/gl3_misc.c.i
+
+src/client/refresh/gl3/gl3_misc.s: src/client/refresh/gl3/gl3_misc.c.s
+.PHONY : src/client/refresh/gl3/gl3_misc.s
+
+# target to generate assembly for a file
+src/client/refresh/gl3/gl3_misc.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_misc.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_misc.c.s
+.PHONY : src/client/refresh/gl3/gl3_misc.c.s
+
+src/client/refresh/gl3/gl3_model.o: src/client/refresh/gl3/gl3_model.c.o
+.PHONY : src/client/refresh/gl3/gl3_model.o
+
+# target to build an object file
+src/client/refresh/gl3/gl3_model.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_model.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_model.c.o
+.PHONY : src/client/refresh/gl3/gl3_model.c.o
+
+src/client/refresh/gl3/gl3_model.i: src/client/refresh/gl3/gl3_model.c.i
+.PHONY : src/client/refresh/gl3/gl3_model.i
+
+# target to preprocess a source file
+src/client/refresh/gl3/gl3_model.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_model.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_model.c.i
+.PHONY : src/client/refresh/gl3/gl3_model.c.i
+
+src/client/refresh/gl3/gl3_model.s: src/client/refresh/gl3/gl3_model.c.s
+.PHONY : src/client/refresh/gl3/gl3_model.s
+
+# target to generate assembly for a file
+src/client/refresh/gl3/gl3_model.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_model.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_model.c.s
+.PHONY : src/client/refresh/gl3/gl3_model.c.s
+
+src/client/refresh/gl3/gl3_sdl.o: src/client/refresh/gl3/gl3_sdl.c.o
+.PHONY : src/client/refresh/gl3/gl3_sdl.o
+
+# target to build an object file
+src/client/refresh/gl3/gl3_sdl.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_sdl.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_sdl.c.o
+.PHONY : src/client/refresh/gl3/gl3_sdl.c.o
+
+src/client/refresh/gl3/gl3_sdl.i: src/client/refresh/gl3/gl3_sdl.c.i
+.PHONY : src/client/refresh/gl3/gl3_sdl.i
+
+# target to preprocess a source file
+src/client/refresh/gl3/gl3_sdl.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_sdl.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_sdl.c.i
+.PHONY : src/client/refresh/gl3/gl3_sdl.c.i
+
+src/client/refresh/gl3/gl3_sdl.s: src/client/refresh/gl3/gl3_sdl.c.s
+.PHONY : src/client/refresh/gl3/gl3_sdl.s
+
+# target to generate assembly for a file
+src/client/refresh/gl3/gl3_sdl.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_sdl.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_sdl.c.s
+.PHONY : src/client/refresh/gl3/gl3_sdl.c.s
+
+src/client/refresh/gl3/gl3_shaders.o: src/client/refresh/gl3/gl3_shaders.c.o
+.PHONY : src/client/refresh/gl3/gl3_shaders.o
+
+# target to build an object file
+src/client/refresh/gl3/gl3_shaders.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_shaders.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_shaders.c.o
+.PHONY : src/client/refresh/gl3/gl3_shaders.c.o
+
+src/client/refresh/gl3/gl3_shaders.i: src/client/refresh/gl3/gl3_shaders.c.i
+.PHONY : src/client/refresh/gl3/gl3_shaders.i
+
+# target to preprocess a source file
+src/client/refresh/gl3/gl3_shaders.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_shaders.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_shaders.c.i
+.PHONY : src/client/refresh/gl3/gl3_shaders.c.i
+
+src/client/refresh/gl3/gl3_shaders.s: src/client/refresh/gl3/gl3_shaders.c.s
+.PHONY : src/client/refresh/gl3/gl3_shaders.s
+
+# target to generate assembly for a file
+src/client/refresh/gl3/gl3_shaders.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_shaders.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_shaders.c.s
+.PHONY : src/client/refresh/gl3/gl3_shaders.c.s
+
+src/client/refresh/gl3/gl3_surf.o: src/client/refresh/gl3/gl3_surf.c.o
+.PHONY : src/client/refresh/gl3/gl3_surf.o
+
+# target to build an object file
+src/client/refresh/gl3/gl3_surf.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_surf.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_surf.c.o
+.PHONY : src/client/refresh/gl3/gl3_surf.c.o
+
+src/client/refresh/gl3/gl3_surf.i: src/client/refresh/gl3/gl3_surf.c.i
+.PHONY : src/client/refresh/gl3/gl3_surf.i
+
+# target to preprocess a source file
+src/client/refresh/gl3/gl3_surf.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_surf.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_surf.c.i
+.PHONY : src/client/refresh/gl3/gl3_surf.c.i
+
+src/client/refresh/gl3/gl3_surf.s: src/client/refresh/gl3/gl3_surf.c.s
+.PHONY : src/client/refresh/gl3/gl3_surf.s
+
+# target to generate assembly for a file
+src/client/refresh/gl3/gl3_surf.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_surf.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_surf.c.s
+.PHONY : src/client/refresh/gl3/gl3_surf.c.s
+
+src/client/refresh/gl3/gl3_warp.o: src/client/refresh/gl3/gl3_warp.c.o
+.PHONY : src/client/refresh/gl3/gl3_warp.o
+
+# target to build an object file
+src/client/refresh/gl3/gl3_warp.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_warp.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_warp.c.o
+.PHONY : src/client/refresh/gl3/gl3_warp.c.o
+
+src/client/refresh/gl3/gl3_warp.i: src/client/refresh/gl3/gl3_warp.c.i
+.PHONY : src/client/refresh/gl3/gl3_warp.i
+
+# target to preprocess a source file
+src/client/refresh/gl3/gl3_warp.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_warp.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_warp.c.i
+.PHONY : src/client/refresh/gl3/gl3_warp.c.i
+
+src/client/refresh/gl3/gl3_warp.s: src/client/refresh/gl3/gl3_warp.c.s
+.PHONY : src/client/refresh/gl3/gl3_warp.s
+
+# target to generate assembly for a file
+src/client/refresh/gl3/gl3_warp.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_warp.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/gl3_warp.c.s
+.PHONY : src/client/refresh/gl3/gl3_warp.c.s
+
+src/client/refresh/gl3/glad-gles3/src/glad.o: src/client/refresh/gl3/glad-gles3/src/glad.c.o
+.PHONY : src/client/refresh/gl3/glad-gles3/src/glad.o
+
+# target to build an object file
+src/client/refresh/gl3/glad-gles3/src/glad.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/glad-gles3/src/glad.c.o
+.PHONY : src/client/refresh/gl3/glad-gles3/src/glad.c.o
+
+src/client/refresh/gl3/glad-gles3/src/glad.i: src/client/refresh/gl3/glad-gles3/src/glad.c.i
+.PHONY : src/client/refresh/gl3/glad-gles3/src/glad.i
+
+# target to preprocess a source file
+src/client/refresh/gl3/glad-gles3/src/glad.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/glad-gles3/src/glad.c.i
+.PHONY : src/client/refresh/gl3/glad-gles3/src/glad.c.i
+
+src/client/refresh/gl3/glad-gles3/src/glad.s: src/client/refresh/gl3/glad-gles3/src/glad.c.s
+.PHONY : src/client/refresh/gl3/glad-gles3/src/glad.s
+
+# target to generate assembly for a file
+src/client/refresh/gl3/glad-gles3/src/glad.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/client/refresh/gl3/glad-gles3/src/glad.c.s
+.PHONY : src/client/refresh/gl3/glad-gles3/src/glad.c.s
+
+src/client/refresh/gl3/glad/src/glad.o: src/client/refresh/gl3/glad/src/glad.c.o
+.PHONY : src/client/refresh/gl3/glad/src/glad.o
+
+# target to build an object file
+src/client/refresh/gl3/glad/src/glad.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/glad/src/glad.c.o
+.PHONY : src/client/refresh/gl3/glad/src/glad.c.o
+
+src/client/refresh/gl3/glad/src/glad.i: src/client/refresh/gl3/glad/src/glad.c.i
+.PHONY : src/client/refresh/gl3/glad/src/glad.i
+
+# target to preprocess a source file
+src/client/refresh/gl3/glad/src/glad.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/glad/src/glad.c.i
+.PHONY : src/client/refresh/gl3/glad/src/glad.c.i
+
+src/client/refresh/gl3/glad/src/glad.s: src/client/refresh/gl3/glad/src/glad.c.s
+.PHONY : src/client/refresh/gl3/glad/src/glad.s
+
+# target to generate assembly for a file
+src/client/refresh/gl3/glad/src/glad.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/glad/src/glad.c.s
+.PHONY : src/client/refresh/gl3/glad/src/glad.c.s
+
+src/client/refresh/soft/sw_aclip.o: src/client/refresh/soft/sw_aclip.c.o
+.PHONY : src/client/refresh/soft/sw_aclip.o
+
+# target to build an object file
+src/client/refresh/soft/sw_aclip.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_aclip.c.o
+.PHONY : src/client/refresh/soft/sw_aclip.c.o
+
+src/client/refresh/soft/sw_aclip.i: src/client/refresh/soft/sw_aclip.c.i
+.PHONY : src/client/refresh/soft/sw_aclip.i
+
+# target to preprocess a source file
+src/client/refresh/soft/sw_aclip.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_aclip.c.i
+.PHONY : src/client/refresh/soft/sw_aclip.c.i
+
+src/client/refresh/soft/sw_aclip.s: src/client/refresh/soft/sw_aclip.c.s
+.PHONY : src/client/refresh/soft/sw_aclip.s
+
+# target to generate assembly for a file
+src/client/refresh/soft/sw_aclip.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_aclip.c.s
+.PHONY : src/client/refresh/soft/sw_aclip.c.s
+
+src/client/refresh/soft/sw_alias.o: src/client/refresh/soft/sw_alias.c.o
+.PHONY : src/client/refresh/soft/sw_alias.o
+
+# target to build an object file
+src/client/refresh/soft/sw_alias.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_alias.c.o
+.PHONY : src/client/refresh/soft/sw_alias.c.o
+
+src/client/refresh/soft/sw_alias.i: src/client/refresh/soft/sw_alias.c.i
+.PHONY : src/client/refresh/soft/sw_alias.i
+
+# target to preprocess a source file
+src/client/refresh/soft/sw_alias.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_alias.c.i
+.PHONY : src/client/refresh/soft/sw_alias.c.i
+
+src/client/refresh/soft/sw_alias.s: src/client/refresh/soft/sw_alias.c.s
+.PHONY : src/client/refresh/soft/sw_alias.s
+
+# target to generate assembly for a file
+src/client/refresh/soft/sw_alias.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_alias.c.s
+.PHONY : src/client/refresh/soft/sw_alias.c.s
+
+src/client/refresh/soft/sw_bsp.o: src/client/refresh/soft/sw_bsp.c.o
+.PHONY : src/client/refresh/soft/sw_bsp.o
+
+# target to build an object file
+src/client/refresh/soft/sw_bsp.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_bsp.c.o
+.PHONY : src/client/refresh/soft/sw_bsp.c.o
+
+src/client/refresh/soft/sw_bsp.i: src/client/refresh/soft/sw_bsp.c.i
+.PHONY : src/client/refresh/soft/sw_bsp.i
+
+# target to preprocess a source file
+src/client/refresh/soft/sw_bsp.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_bsp.c.i
+.PHONY : src/client/refresh/soft/sw_bsp.c.i
+
+src/client/refresh/soft/sw_bsp.s: src/client/refresh/soft/sw_bsp.c.s
+.PHONY : src/client/refresh/soft/sw_bsp.s
+
+# target to generate assembly for a file
+src/client/refresh/soft/sw_bsp.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_bsp.c.s
+.PHONY : src/client/refresh/soft/sw_bsp.c.s
+
+src/client/refresh/soft/sw_draw.o: src/client/refresh/soft/sw_draw.c.o
+.PHONY : src/client/refresh/soft/sw_draw.o
+
+# target to build an object file
+src/client/refresh/soft/sw_draw.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_draw.c.o
+.PHONY : src/client/refresh/soft/sw_draw.c.o
+
+src/client/refresh/soft/sw_draw.i: src/client/refresh/soft/sw_draw.c.i
+.PHONY : src/client/refresh/soft/sw_draw.i
+
+# target to preprocess a source file
+src/client/refresh/soft/sw_draw.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_draw.c.i
+.PHONY : src/client/refresh/soft/sw_draw.c.i
+
+src/client/refresh/soft/sw_draw.s: src/client/refresh/soft/sw_draw.c.s
+.PHONY : src/client/refresh/soft/sw_draw.s
+
+# target to generate assembly for a file
+src/client/refresh/soft/sw_draw.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_draw.c.s
+.PHONY : src/client/refresh/soft/sw_draw.c.s
+
+src/client/refresh/soft/sw_edge.o: src/client/refresh/soft/sw_edge.c.o
+.PHONY : src/client/refresh/soft/sw_edge.o
+
+# target to build an object file
+src/client/refresh/soft/sw_edge.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_edge.c.o
+.PHONY : src/client/refresh/soft/sw_edge.c.o
+
+src/client/refresh/soft/sw_edge.i: src/client/refresh/soft/sw_edge.c.i
+.PHONY : src/client/refresh/soft/sw_edge.i
+
+# target to preprocess a source file
+src/client/refresh/soft/sw_edge.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_edge.c.i
+.PHONY : src/client/refresh/soft/sw_edge.c.i
+
+src/client/refresh/soft/sw_edge.s: src/client/refresh/soft/sw_edge.c.s
+.PHONY : src/client/refresh/soft/sw_edge.s
+
+# target to generate assembly for a file
+src/client/refresh/soft/sw_edge.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_edge.c.s
+.PHONY : src/client/refresh/soft/sw_edge.c.s
+
+src/client/refresh/soft/sw_image.o: src/client/refresh/soft/sw_image.c.o
+.PHONY : src/client/refresh/soft/sw_image.o
+
+# target to build an object file
+src/client/refresh/soft/sw_image.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_image.c.o
+.PHONY : src/client/refresh/soft/sw_image.c.o
+
+src/client/refresh/soft/sw_image.i: src/client/refresh/soft/sw_image.c.i
+.PHONY : src/client/refresh/soft/sw_image.i
+
+# target to preprocess a source file
+src/client/refresh/soft/sw_image.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_image.c.i
+.PHONY : src/client/refresh/soft/sw_image.c.i
+
+src/client/refresh/soft/sw_image.s: src/client/refresh/soft/sw_image.c.s
+.PHONY : src/client/refresh/soft/sw_image.s
+
+# target to generate assembly for a file
+src/client/refresh/soft/sw_image.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_image.c.s
+.PHONY : src/client/refresh/soft/sw_image.c.s
+
+src/client/refresh/soft/sw_light.o: src/client/refresh/soft/sw_light.c.o
+.PHONY : src/client/refresh/soft/sw_light.o
+
+# target to build an object file
+src/client/refresh/soft/sw_light.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_light.c.o
+.PHONY : src/client/refresh/soft/sw_light.c.o
+
+src/client/refresh/soft/sw_light.i: src/client/refresh/soft/sw_light.c.i
+.PHONY : src/client/refresh/soft/sw_light.i
+
+# target to preprocess a source file
+src/client/refresh/soft/sw_light.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_light.c.i
+.PHONY : src/client/refresh/soft/sw_light.c.i
+
+src/client/refresh/soft/sw_light.s: src/client/refresh/soft/sw_light.c.s
+.PHONY : src/client/refresh/soft/sw_light.s
+
+# target to generate assembly for a file
+src/client/refresh/soft/sw_light.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_light.c.s
+.PHONY : src/client/refresh/soft/sw_light.c.s
+
+src/client/refresh/soft/sw_main.o: src/client/refresh/soft/sw_main.c.o
+.PHONY : src/client/refresh/soft/sw_main.o
+
+# target to build an object file
+src/client/refresh/soft/sw_main.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_main.c.o
+.PHONY : src/client/refresh/soft/sw_main.c.o
+
+src/client/refresh/soft/sw_main.i: src/client/refresh/soft/sw_main.c.i
+.PHONY : src/client/refresh/soft/sw_main.i
+
+# target to preprocess a source file
+src/client/refresh/soft/sw_main.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_main.c.i
+.PHONY : src/client/refresh/soft/sw_main.c.i
+
+src/client/refresh/soft/sw_main.s: src/client/refresh/soft/sw_main.c.s
+.PHONY : src/client/refresh/soft/sw_main.s
+
+# target to generate assembly for a file
+src/client/refresh/soft/sw_main.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_main.c.s
+.PHONY : src/client/refresh/soft/sw_main.c.s
+
+src/client/refresh/soft/sw_misc.o: src/client/refresh/soft/sw_misc.c.o
+.PHONY : src/client/refresh/soft/sw_misc.o
+
+# target to build an object file
+src/client/refresh/soft/sw_misc.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_misc.c.o
+.PHONY : src/client/refresh/soft/sw_misc.c.o
+
+src/client/refresh/soft/sw_misc.i: src/client/refresh/soft/sw_misc.c.i
+.PHONY : src/client/refresh/soft/sw_misc.i
+
+# target to preprocess a source file
+src/client/refresh/soft/sw_misc.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_misc.c.i
+.PHONY : src/client/refresh/soft/sw_misc.c.i
+
+src/client/refresh/soft/sw_misc.s: src/client/refresh/soft/sw_misc.c.s
+.PHONY : src/client/refresh/soft/sw_misc.s
+
+# target to generate assembly for a file
+src/client/refresh/soft/sw_misc.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_misc.c.s
+.PHONY : src/client/refresh/soft/sw_misc.c.s
+
+src/client/refresh/soft/sw_model.o: src/client/refresh/soft/sw_model.c.o
+.PHONY : src/client/refresh/soft/sw_model.o
+
+# target to build an object file
+src/client/refresh/soft/sw_model.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_model.c.o
+.PHONY : src/client/refresh/soft/sw_model.c.o
+
+src/client/refresh/soft/sw_model.i: src/client/refresh/soft/sw_model.c.i
+.PHONY : src/client/refresh/soft/sw_model.i
+
+# target to preprocess a source file
+src/client/refresh/soft/sw_model.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_model.c.i
+.PHONY : src/client/refresh/soft/sw_model.c.i
+
+src/client/refresh/soft/sw_model.s: src/client/refresh/soft/sw_model.c.s
+.PHONY : src/client/refresh/soft/sw_model.s
+
+# target to generate assembly for a file
+src/client/refresh/soft/sw_model.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_model.c.s
+.PHONY : src/client/refresh/soft/sw_model.c.s
+
+src/client/refresh/soft/sw_part.o: src/client/refresh/soft/sw_part.c.o
+.PHONY : src/client/refresh/soft/sw_part.o
+
+# target to build an object file
+src/client/refresh/soft/sw_part.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_part.c.o
+.PHONY : src/client/refresh/soft/sw_part.c.o
+
+src/client/refresh/soft/sw_part.i: src/client/refresh/soft/sw_part.c.i
+.PHONY : src/client/refresh/soft/sw_part.i
+
+# target to preprocess a source file
+src/client/refresh/soft/sw_part.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_part.c.i
+.PHONY : src/client/refresh/soft/sw_part.c.i
+
+src/client/refresh/soft/sw_part.s: src/client/refresh/soft/sw_part.c.s
+.PHONY : src/client/refresh/soft/sw_part.s
+
+# target to generate assembly for a file
+src/client/refresh/soft/sw_part.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_part.c.s
+.PHONY : src/client/refresh/soft/sw_part.c.s
+
+src/client/refresh/soft/sw_poly.o: src/client/refresh/soft/sw_poly.c.o
+.PHONY : src/client/refresh/soft/sw_poly.o
+
+# target to build an object file
+src/client/refresh/soft/sw_poly.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_poly.c.o
+.PHONY : src/client/refresh/soft/sw_poly.c.o
+
+src/client/refresh/soft/sw_poly.i: src/client/refresh/soft/sw_poly.c.i
+.PHONY : src/client/refresh/soft/sw_poly.i
+
+# target to preprocess a source file
+src/client/refresh/soft/sw_poly.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_poly.c.i
+.PHONY : src/client/refresh/soft/sw_poly.c.i
+
+src/client/refresh/soft/sw_poly.s: src/client/refresh/soft/sw_poly.c.s
+.PHONY : src/client/refresh/soft/sw_poly.s
+
+# target to generate assembly for a file
+src/client/refresh/soft/sw_poly.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_poly.c.s
+.PHONY : src/client/refresh/soft/sw_poly.c.s
+
+src/client/refresh/soft/sw_polyset.o: src/client/refresh/soft/sw_polyset.c.o
+.PHONY : src/client/refresh/soft/sw_polyset.o
+
+# target to build an object file
+src/client/refresh/soft/sw_polyset.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_polyset.c.o
+.PHONY : src/client/refresh/soft/sw_polyset.c.o
+
+src/client/refresh/soft/sw_polyset.i: src/client/refresh/soft/sw_polyset.c.i
+.PHONY : src/client/refresh/soft/sw_polyset.i
+
+# target to preprocess a source file
+src/client/refresh/soft/sw_polyset.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_polyset.c.i
+.PHONY : src/client/refresh/soft/sw_polyset.c.i
+
+src/client/refresh/soft/sw_polyset.s: src/client/refresh/soft/sw_polyset.c.s
+.PHONY : src/client/refresh/soft/sw_polyset.s
+
+# target to generate assembly for a file
+src/client/refresh/soft/sw_polyset.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_polyset.c.s
+.PHONY : src/client/refresh/soft/sw_polyset.c.s
+
+src/client/refresh/soft/sw_rast.o: src/client/refresh/soft/sw_rast.c.o
+.PHONY : src/client/refresh/soft/sw_rast.o
+
+# target to build an object file
+src/client/refresh/soft/sw_rast.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_rast.c.o
+.PHONY : src/client/refresh/soft/sw_rast.c.o
+
+src/client/refresh/soft/sw_rast.i: src/client/refresh/soft/sw_rast.c.i
+.PHONY : src/client/refresh/soft/sw_rast.i
+
+# target to preprocess a source file
+src/client/refresh/soft/sw_rast.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_rast.c.i
+.PHONY : src/client/refresh/soft/sw_rast.c.i
+
+src/client/refresh/soft/sw_rast.s: src/client/refresh/soft/sw_rast.c.s
+.PHONY : src/client/refresh/soft/sw_rast.s
+
+# target to generate assembly for a file
+src/client/refresh/soft/sw_rast.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_rast.c.s
+.PHONY : src/client/refresh/soft/sw_rast.c.s
+
+src/client/refresh/soft/sw_scan.o: src/client/refresh/soft/sw_scan.c.o
+.PHONY : src/client/refresh/soft/sw_scan.o
+
+# target to build an object file
+src/client/refresh/soft/sw_scan.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_scan.c.o
+.PHONY : src/client/refresh/soft/sw_scan.c.o
+
+src/client/refresh/soft/sw_scan.i: src/client/refresh/soft/sw_scan.c.i
+.PHONY : src/client/refresh/soft/sw_scan.i
+
+# target to preprocess a source file
+src/client/refresh/soft/sw_scan.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_scan.c.i
+.PHONY : src/client/refresh/soft/sw_scan.c.i
+
+src/client/refresh/soft/sw_scan.s: src/client/refresh/soft/sw_scan.c.s
+.PHONY : src/client/refresh/soft/sw_scan.s
+
+# target to generate assembly for a file
+src/client/refresh/soft/sw_scan.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_scan.c.s
+.PHONY : src/client/refresh/soft/sw_scan.c.s
+
+src/client/refresh/soft/sw_sprite.o: src/client/refresh/soft/sw_sprite.c.o
+.PHONY : src/client/refresh/soft/sw_sprite.o
+
+# target to build an object file
+src/client/refresh/soft/sw_sprite.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_sprite.c.o
+.PHONY : src/client/refresh/soft/sw_sprite.c.o
+
+src/client/refresh/soft/sw_sprite.i: src/client/refresh/soft/sw_sprite.c.i
+.PHONY : src/client/refresh/soft/sw_sprite.i
+
+# target to preprocess a source file
+src/client/refresh/soft/sw_sprite.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_sprite.c.i
+.PHONY : src/client/refresh/soft/sw_sprite.c.i
+
+src/client/refresh/soft/sw_sprite.s: src/client/refresh/soft/sw_sprite.c.s
+.PHONY : src/client/refresh/soft/sw_sprite.s
+
+# target to generate assembly for a file
+src/client/refresh/soft/sw_sprite.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_sprite.c.s
+.PHONY : src/client/refresh/soft/sw_sprite.c.s
+
+src/client/refresh/soft/sw_surf.o: src/client/refresh/soft/sw_surf.c.o
+.PHONY : src/client/refresh/soft/sw_surf.o
+
+# target to build an object file
+src/client/refresh/soft/sw_surf.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_surf.c.o
+.PHONY : src/client/refresh/soft/sw_surf.c.o
+
+src/client/refresh/soft/sw_surf.i: src/client/refresh/soft/sw_surf.c.i
+.PHONY : src/client/refresh/soft/sw_surf.i
+
+# target to preprocess a source file
+src/client/refresh/soft/sw_surf.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_surf.c.i
+.PHONY : src/client/refresh/soft/sw_surf.c.i
+
+src/client/refresh/soft/sw_surf.s: src/client/refresh/soft/sw_surf.c.s
+.PHONY : src/client/refresh/soft/sw_surf.s
+
+# target to generate assembly for a file
+src/client/refresh/soft/sw_surf.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_surf.c.s
+.PHONY : src/client/refresh/soft/sw_surf.c.s
+
+src/client/sound/ogg.o: src/client/sound/ogg.c.o
+.PHONY : src/client/sound/ogg.o
+
+# target to build an object file
+src/client/sound/ogg.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/sound/ogg.c.o
+.PHONY : src/client/sound/ogg.c.o
+
+src/client/sound/ogg.i: src/client/sound/ogg.c.i
+.PHONY : src/client/sound/ogg.i
+
+# target to preprocess a source file
+src/client/sound/ogg.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/sound/ogg.c.i
+.PHONY : src/client/sound/ogg.c.i
+
+src/client/sound/ogg.s: src/client/sound/ogg.c.s
+.PHONY : src/client/sound/ogg.s
+
+# target to generate assembly for a file
+src/client/sound/ogg.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/sound/ogg.c.s
+.PHONY : src/client/sound/ogg.c.s
+
+src/client/sound/openal.o: src/client/sound/openal.c.o
+.PHONY : src/client/sound/openal.o
+
+# target to build an object file
+src/client/sound/openal.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/sound/openal.c.o
+.PHONY : src/client/sound/openal.c.o
+
+src/client/sound/openal.i: src/client/sound/openal.c.i
+.PHONY : src/client/sound/openal.i
+
+# target to preprocess a source file
+src/client/sound/openal.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/sound/openal.c.i
+.PHONY : src/client/sound/openal.c.i
+
+src/client/sound/openal.s: src/client/sound/openal.c.s
+.PHONY : src/client/sound/openal.s
+
+# target to generate assembly for a file
+src/client/sound/openal.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/sound/openal.c.s
+.PHONY : src/client/sound/openal.c.s
+
+src/client/sound/qal.o: src/client/sound/qal.c.o
+.PHONY : src/client/sound/qal.o
+
+# target to build an object file
+src/client/sound/qal.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/sound/qal.c.o
+.PHONY : src/client/sound/qal.c.o
+
+src/client/sound/qal.i: src/client/sound/qal.c.i
+.PHONY : src/client/sound/qal.i
+
+# target to preprocess a source file
+src/client/sound/qal.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/sound/qal.c.i
+.PHONY : src/client/sound/qal.c.i
+
+src/client/sound/qal.s: src/client/sound/qal.c.s
+.PHONY : src/client/sound/qal.s
+
+# target to generate assembly for a file
+src/client/sound/qal.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/sound/qal.c.s
+.PHONY : src/client/sound/qal.c.s
+
+src/client/sound/sdl.o: src/client/sound/sdl.c.o
+.PHONY : src/client/sound/sdl.o
+
+# target to build an object file
+src/client/sound/sdl.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/sound/sdl.c.o
+.PHONY : src/client/sound/sdl.c.o
+
+src/client/sound/sdl.i: src/client/sound/sdl.c.i
+.PHONY : src/client/sound/sdl.i
+
+# target to preprocess a source file
+src/client/sound/sdl.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/sound/sdl.c.i
+.PHONY : src/client/sound/sdl.c.i
+
+src/client/sound/sdl.s: src/client/sound/sdl.c.s
+.PHONY : src/client/sound/sdl.s
+
+# target to generate assembly for a file
+src/client/sound/sdl.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/sound/sdl.c.s
+.PHONY : src/client/sound/sdl.c.s
+
+src/client/sound/sound.o: src/client/sound/sound.c.o
+.PHONY : src/client/sound/sound.o
+
+# target to build an object file
+src/client/sound/sound.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/sound/sound.c.o
+.PHONY : src/client/sound/sound.c.o
+
+src/client/sound/sound.i: src/client/sound/sound.c.i
+.PHONY : src/client/sound/sound.i
+
+# target to preprocess a source file
+src/client/sound/sound.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/sound/sound.c.i
+.PHONY : src/client/sound/sound.c.i
+
+src/client/sound/sound.s: src/client/sound/sound.c.s
+.PHONY : src/client/sound/sound.s
+
+# target to generate assembly for a file
+src/client/sound/sound.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/sound/sound.c.s
+.PHONY : src/client/sound/sound.c.s
+
+src/client/sound/wave.o: src/client/sound/wave.c.o
+.PHONY : src/client/sound/wave.o
+
+# target to build an object file
+src/client/sound/wave.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/sound/wave.c.o
+.PHONY : src/client/sound/wave.c.o
+
+src/client/sound/wave.i: src/client/sound/wave.c.i
+.PHONY : src/client/sound/wave.i
+
+# target to preprocess a source file
+src/client/sound/wave.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/sound/wave.c.i
+.PHONY : src/client/sound/wave.c.i
+
+src/client/sound/wave.s: src/client/sound/wave.c.s
+.PHONY : src/client/sound/wave.s
+
+# target to generate assembly for a file
+src/client/sound/wave.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/sound/wave.c.s
+.PHONY : src/client/sound/wave.c.s
+
+src/client/vid/glimp_sdl.o: src/client/vid/glimp_sdl.c.o
+.PHONY : src/client/vid/glimp_sdl.o
+
+# target to build an object file
+src/client/vid/glimp_sdl.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/vid/glimp_sdl.c.o
+.PHONY : src/client/vid/glimp_sdl.c.o
+
+src/client/vid/glimp_sdl.i: src/client/vid/glimp_sdl.c.i
+.PHONY : src/client/vid/glimp_sdl.i
+
+# target to preprocess a source file
+src/client/vid/glimp_sdl.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/vid/glimp_sdl.c.i
+.PHONY : src/client/vid/glimp_sdl.c.i
+
+src/client/vid/glimp_sdl.s: src/client/vid/glimp_sdl.c.s
+.PHONY : src/client/vid/glimp_sdl.s
+
+# target to generate assembly for a file
+src/client/vid/glimp_sdl.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/vid/glimp_sdl.c.s
+.PHONY : src/client/vid/glimp_sdl.c.s
+
+src/client/vid/vid.o: src/client/vid/vid.c.o
+.PHONY : src/client/vid/vid.o
+
+# target to build an object file
+src/client/vid/vid.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/vid/vid.c.o
+.PHONY : src/client/vid/vid.c.o
+
+src/client/vid/vid.i: src/client/vid/vid.c.i
+.PHONY : src/client/vid/vid.i
+
+# target to preprocess a source file
+src/client/vid/vid.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/vid/vid.c.i
+.PHONY : src/client/vid/vid.c.i
+
+src/client/vid/vid.s: src/client/vid/vid.c.s
+.PHONY : src/client/vid/vid.s
+
+# target to generate assembly for a file
+src/client/vid/vid.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/client/vid/vid.c.s
+.PHONY : src/client/vid/vid.c.s
+
+src/common/argproc.o: src/common/argproc.c.o
+.PHONY : src/common/argproc.o
+
+# target to build an object file
+src/common/argproc.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/argproc.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/argproc.c.o
+.PHONY : src/common/argproc.c.o
+
+src/common/argproc.i: src/common/argproc.c.i
+.PHONY : src/common/argproc.i
+
+# target to preprocess a source file
+src/common/argproc.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/argproc.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/argproc.c.i
+.PHONY : src/common/argproc.c.i
+
+src/common/argproc.s: src/common/argproc.c.s
+.PHONY : src/common/argproc.s
+
+# target to generate assembly for a file
+src/common/argproc.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/argproc.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/argproc.c.s
+.PHONY : src/common/argproc.c.s
+
+src/common/clientserver.o: src/common/clientserver.c.o
+.PHONY : src/common/clientserver.o
+
+# target to build an object file
+src/common/clientserver.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/clientserver.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/clientserver.c.o
+.PHONY : src/common/clientserver.c.o
+
+src/common/clientserver.i: src/common/clientserver.c.i
+.PHONY : src/common/clientserver.i
+
+# target to preprocess a source file
+src/common/clientserver.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/clientserver.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/clientserver.c.i
+.PHONY : src/common/clientserver.c.i
+
+src/common/clientserver.s: src/common/clientserver.c.s
+.PHONY : src/common/clientserver.s
+
+# target to generate assembly for a file
+src/common/clientserver.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/clientserver.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/clientserver.c.s
+.PHONY : src/common/clientserver.c.s
+
+src/common/cmdparser.o: src/common/cmdparser.c.o
+.PHONY : src/common/cmdparser.o
+
+# target to build an object file
+src/common/cmdparser.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/cmdparser.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/cmdparser.c.o
+.PHONY : src/common/cmdparser.c.o
+
+src/common/cmdparser.i: src/common/cmdparser.c.i
+.PHONY : src/common/cmdparser.i
+
+# target to preprocess a source file
+src/common/cmdparser.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/cmdparser.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/cmdparser.c.i
+.PHONY : src/common/cmdparser.c.i
+
+src/common/cmdparser.s: src/common/cmdparser.c.s
+.PHONY : src/common/cmdparser.s
+
+# target to generate assembly for a file
+src/common/cmdparser.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/cmdparser.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/cmdparser.c.s
+.PHONY : src/common/cmdparser.c.s
+
+src/common/collision.o: src/common/collision.c.o
+.PHONY : src/common/collision.o
+
+# target to build an object file
+src/common/collision.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/collision.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/collision.c.o
+.PHONY : src/common/collision.c.o
+
+src/common/collision.i: src/common/collision.c.i
+.PHONY : src/common/collision.i
+
+# target to preprocess a source file
+src/common/collision.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/collision.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/collision.c.i
+.PHONY : src/common/collision.c.i
+
+src/common/collision.s: src/common/collision.c.s
+.PHONY : src/common/collision.s
+
+# target to generate assembly for a file
+src/common/collision.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/collision.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/collision.c.s
+.PHONY : src/common/collision.c.s
+
+src/common/crc.o: src/common/crc.c.o
+.PHONY : src/common/crc.o
+
+# target to build an object file
+src/common/crc.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/crc.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/crc.c.o
+.PHONY : src/common/crc.c.o
+
+src/common/crc.i: src/common/crc.c.i
+.PHONY : src/common/crc.i
+
+# target to preprocess a source file
+src/common/crc.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/crc.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/crc.c.i
+.PHONY : src/common/crc.c.i
+
+src/common/crc.s: src/common/crc.c.s
+.PHONY : src/common/crc.s
+
+# target to generate assembly for a file
+src/common/crc.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/crc.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/crc.c.s
+.PHONY : src/common/crc.c.s
+
+src/common/cvar.o: src/common/cvar.c.o
+.PHONY : src/common/cvar.o
+
+# target to build an object file
+src/common/cvar.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/cvar.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/cvar.c.o
+.PHONY : src/common/cvar.c.o
+
+src/common/cvar.i: src/common/cvar.c.i
+.PHONY : src/common/cvar.i
+
+# target to preprocess a source file
+src/common/cvar.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/cvar.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/cvar.c.i
+.PHONY : src/common/cvar.c.i
+
+src/common/cvar.s: src/common/cvar.c.s
+.PHONY : src/common/cvar.s
+
+# target to generate assembly for a file
+src/common/cvar.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/cvar.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/cvar.c.s
+.PHONY : src/common/cvar.c.s
+
+src/common/filesystem.o: src/common/filesystem.c.o
+.PHONY : src/common/filesystem.o
+
+# target to build an object file
+src/common/filesystem.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/filesystem.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/filesystem.c.o
+.PHONY : src/common/filesystem.c.o
+
+src/common/filesystem.i: src/common/filesystem.c.i
+.PHONY : src/common/filesystem.i
+
+# target to preprocess a source file
+src/common/filesystem.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/filesystem.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/filesystem.c.i
+.PHONY : src/common/filesystem.c.i
+
+src/common/filesystem.s: src/common/filesystem.c.s
+.PHONY : src/common/filesystem.s
+
+# target to generate assembly for a file
+src/common/filesystem.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/filesystem.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/filesystem.c.s
+.PHONY : src/common/filesystem.c.s
+
+src/common/frame.o: src/common/frame.c.o
+.PHONY : src/common/frame.o
+
+# target to build an object file
+src/common/frame.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/frame.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/frame.c.o
+.PHONY : src/common/frame.c.o
+
+src/common/frame.i: src/common/frame.c.i
+.PHONY : src/common/frame.i
+
+# target to preprocess a source file
+src/common/frame.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/frame.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/frame.c.i
+.PHONY : src/common/frame.c.i
+
+src/common/frame.s: src/common/frame.c.s
+.PHONY : src/common/frame.s
+
+# target to generate assembly for a file
+src/common/frame.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/frame.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/frame.c.s
+.PHONY : src/common/frame.c.s
+
+src/common/glob.o: src/common/glob.c.o
+.PHONY : src/common/glob.o
+
+# target to build an object file
+src/common/glob.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/glob.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/glob.c.o
+.PHONY : src/common/glob.c.o
+
+src/common/glob.i: src/common/glob.c.i
+.PHONY : src/common/glob.i
+
+# target to preprocess a source file
+src/common/glob.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/glob.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/glob.c.i
+.PHONY : src/common/glob.c.i
+
+src/common/glob.s: src/common/glob.c.s
+.PHONY : src/common/glob.s
+
+# target to generate assembly for a file
+src/common/glob.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/glob.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/glob.c.s
+.PHONY : src/common/glob.c.s
+
+src/common/md4.o: src/common/md4.c.o
+.PHONY : src/common/md4.o
+
+# target to build an object file
+src/common/md4.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/md4.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/md4.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/common/md4.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/common/md4.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/common/md4.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/common/md4.c.o
+.PHONY : src/common/md4.c.o
+
+src/common/md4.i: src/common/md4.c.i
+.PHONY : src/common/md4.i
+
+# target to preprocess a source file
+src/common/md4.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/md4.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/md4.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/common/md4.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/common/md4.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/common/md4.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/common/md4.c.i
+.PHONY : src/common/md4.c.i
+
+src/common/md4.s: src/common/md4.c.s
+.PHONY : src/common/md4.s
+
+# target to generate assembly for a file
+src/common/md4.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/md4.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/md4.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/common/md4.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/common/md4.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/common/md4.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/common/md4.c.s
+.PHONY : src/common/md4.c.s
+
+src/common/movemsg.o: src/common/movemsg.c.o
+.PHONY : src/common/movemsg.o
+
+# target to build an object file
+src/common/movemsg.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/movemsg.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/movemsg.c.o
+.PHONY : src/common/movemsg.c.o
+
+src/common/movemsg.i: src/common/movemsg.c.i
+.PHONY : src/common/movemsg.i
+
+# target to preprocess a source file
+src/common/movemsg.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/movemsg.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/movemsg.c.i
+.PHONY : src/common/movemsg.c.i
+
+src/common/movemsg.s: src/common/movemsg.c.s
+.PHONY : src/common/movemsg.s
+
+# target to generate assembly for a file
+src/common/movemsg.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/movemsg.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/movemsg.c.s
+.PHONY : src/common/movemsg.c.s
+
+src/common/netchan.o: src/common/netchan.c.o
+.PHONY : src/common/netchan.o
+
+# target to build an object file
+src/common/netchan.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/netchan.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/netchan.c.o
+.PHONY : src/common/netchan.c.o
+
+src/common/netchan.i: src/common/netchan.c.i
+.PHONY : src/common/netchan.i
+
+# target to preprocess a source file
+src/common/netchan.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/netchan.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/netchan.c.i
+.PHONY : src/common/netchan.c.i
+
+src/common/netchan.s: src/common/netchan.c.s
+.PHONY : src/common/netchan.s
+
+# target to generate assembly for a file
+src/common/netchan.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/netchan.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/netchan.c.s
+.PHONY : src/common/netchan.c.s
+
+src/common/pmove.o: src/common/pmove.c.o
+.PHONY : src/common/pmove.o
+
+# target to build an object file
+src/common/pmove.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/pmove.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/pmove.c.o
+.PHONY : src/common/pmove.c.o
+
+src/common/pmove.i: src/common/pmove.c.i
+.PHONY : src/common/pmove.i
+
+# target to preprocess a source file
+src/common/pmove.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/pmove.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/pmove.c.i
+.PHONY : src/common/pmove.c.i
+
+src/common/pmove.s: src/common/pmove.c.s
+.PHONY : src/common/pmove.s
+
+# target to generate assembly for a file
+src/common/pmove.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/pmove.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/pmove.c.s
+.PHONY : src/common/pmove.c.s
+
+src/common/shared/flash.o: src/common/shared/flash.c.o
+.PHONY : src/common/shared/flash.o
+
+# target to build an object file
+src/common/shared/flash.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/shared/flash.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/common/shared/flash.c.o
+.PHONY : src/common/shared/flash.c.o
+
+src/common/shared/flash.i: src/common/shared/flash.c.i
+.PHONY : src/common/shared/flash.i
+
+# target to preprocess a source file
+src/common/shared/flash.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/shared/flash.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/common/shared/flash.c.i
+.PHONY : src/common/shared/flash.c.i
+
+src/common/shared/flash.s: src/common/shared/flash.c.s
+.PHONY : src/common/shared/flash.s
+
+# target to generate assembly for a file
+src/common/shared/flash.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/shared/flash.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/common/shared/flash.c.s
+.PHONY : src/common/shared/flash.c.s
+
+src/common/shared/rand.o: src/common/shared/rand.c.o
+.PHONY : src/common/shared/rand.o
+
+# target to build an object file
+src/common/shared/rand.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/shared/rand.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/shared/rand.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/common/shared/rand.c.o
+.PHONY : src/common/shared/rand.c.o
+
+src/common/shared/rand.i: src/common/shared/rand.c.i
+.PHONY : src/common/shared/rand.i
+
+# target to preprocess a source file
+src/common/shared/rand.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/shared/rand.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/shared/rand.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/common/shared/rand.c.i
+.PHONY : src/common/shared/rand.c.i
+
+src/common/shared/rand.s: src/common/shared/rand.c.s
+.PHONY : src/common/shared/rand.s
+
+# target to generate assembly for a file
+src/common/shared/rand.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/shared/rand.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/shared/rand.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/common/shared/rand.c.s
+.PHONY : src/common/shared/rand.c.s
+
+src/common/shared/shared.o: src/common/shared/shared.c.o
+.PHONY : src/common/shared/shared.o
+
+# target to build an object file
+src/common/shared/shared.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/shared/shared.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/shared/shared.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/common/shared/shared.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/common/shared/shared.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/common/shared/shared.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/common/shared/shared.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/common/shared/shared.c.o
+.PHONY : src/common/shared/shared.c.o
+
+src/common/shared/shared.i: src/common/shared/shared.c.i
+.PHONY : src/common/shared/shared.i
+
+# target to preprocess a source file
+src/common/shared/shared.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/shared/shared.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/shared/shared.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/common/shared/shared.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/common/shared/shared.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/common/shared/shared.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/common/shared/shared.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/common/shared/shared.c.i
+.PHONY : src/common/shared/shared.c.i
+
+src/common/shared/shared.s: src/common/shared/shared.c.s
+.PHONY : src/common/shared/shared.s
+
+# target to generate assembly for a file
+src/common/shared/shared.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/shared/shared.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/shared/shared.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/common/shared/shared.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/src/common/shared/shared.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl3.dir/build.make CMakeFiles/ref_gl3.dir/src/common/shared/shared.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gles3.dir/build.make CMakeFiles/ref_gles3.dir/src/common/shared/shared.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_soft.dir/build.make CMakeFiles/ref_soft.dir/src/common/shared/shared.c.s
+.PHONY : src/common/shared/shared.c.s
+
+src/common/szone.o: src/common/szone.c.o
+.PHONY : src/common/szone.o
+
+# target to build an object file
+src/common/szone.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/szone.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/szone.c.o
+.PHONY : src/common/szone.c.o
+
+src/common/szone.i: src/common/szone.c.i
+.PHONY : src/common/szone.i
+
+# target to preprocess a source file
+src/common/szone.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/szone.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/szone.c.i
+.PHONY : src/common/szone.c.i
+
+src/common/szone.s: src/common/szone.c.s
+.PHONY : src/common/szone.s
+
+# target to generate assembly for a file
+src/common/szone.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/szone.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/szone.c.s
+.PHONY : src/common/szone.c.s
+
+src/common/unzip/ioapi.o: src/common/unzip/ioapi.c.o
+.PHONY : src/common/unzip/ioapi.o
+
+# target to build an object file
+src/common/unzip/ioapi.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/unzip/ioapi.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/unzip/ioapi.c.o
+.PHONY : src/common/unzip/ioapi.c.o
+
+src/common/unzip/ioapi.i: src/common/unzip/ioapi.c.i
+.PHONY : src/common/unzip/ioapi.i
+
+# target to preprocess a source file
+src/common/unzip/ioapi.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/unzip/ioapi.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/unzip/ioapi.c.i
+.PHONY : src/common/unzip/ioapi.c.i
+
+src/common/unzip/ioapi.s: src/common/unzip/ioapi.c.s
+.PHONY : src/common/unzip/ioapi.s
+
+# target to generate assembly for a file
+src/common/unzip/ioapi.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/unzip/ioapi.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/unzip/ioapi.c.s
+.PHONY : src/common/unzip/ioapi.c.s
+
+src/common/unzip/miniz.o: src/common/unzip/miniz.c.o
+.PHONY : src/common/unzip/miniz.o
+
+# target to build an object file
+src/common/unzip/miniz.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/unzip/miniz.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/unzip/miniz.c.o
+.PHONY : src/common/unzip/miniz.c.o
+
+src/common/unzip/miniz.i: src/common/unzip/miniz.c.i
+.PHONY : src/common/unzip/miniz.i
+
+# target to preprocess a source file
+src/common/unzip/miniz.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/unzip/miniz.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/unzip/miniz.c.i
+.PHONY : src/common/unzip/miniz.c.i
+
+src/common/unzip/miniz.s: src/common/unzip/miniz.c.s
+.PHONY : src/common/unzip/miniz.s
+
+# target to generate assembly for a file
+src/common/unzip/miniz.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/unzip/miniz.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/unzip/miniz.c.s
+.PHONY : src/common/unzip/miniz.c.s
+
+src/common/unzip/unzip.o: src/common/unzip/unzip.c.o
+.PHONY : src/common/unzip/unzip.o
+
+# target to build an object file
+src/common/unzip/unzip.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/unzip/unzip.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/unzip/unzip.c.o
+.PHONY : src/common/unzip/unzip.c.o
+
+src/common/unzip/unzip.i: src/common/unzip/unzip.c.i
+.PHONY : src/common/unzip/unzip.i
+
+# target to preprocess a source file
+src/common/unzip/unzip.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/unzip/unzip.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/unzip/unzip.c.i
+.PHONY : src/common/unzip/unzip.c.i
+
+src/common/unzip/unzip.s: src/common/unzip/unzip.c.s
+.PHONY : src/common/unzip/unzip.s
+
+# target to generate assembly for a file
+src/common/unzip/unzip.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/unzip/unzip.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/unzip/unzip.c.s
+.PHONY : src/common/unzip/unzip.c.s
+
+src/common/zone.o: src/common/zone.c.o
+.PHONY : src/common/zone.o
+
+# target to build an object file
+src/common/zone.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/zone.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/zone.c.o
+.PHONY : src/common/zone.c.o
+
+src/common/zone.i: src/common/zone.c.i
+.PHONY : src/common/zone.i
+
+# target to preprocess a source file
+src/common/zone.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/zone.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/zone.c.i
+.PHONY : src/common/zone.c.i
+
+src/common/zone.s: src/common/zone.c.s
+.PHONY : src/common/zone.s
+
+# target to generate assembly for a file
+src/common/zone.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/common/zone.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/common/zone.c.s
+.PHONY : src/common/zone.c.s
+
+src/game/g_ai.o: src/game/g_ai.c.o
+.PHONY : src/game/g_ai.o
+
+# target to build an object file
+src/game/g_ai.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_ai.c.o
+.PHONY : src/game/g_ai.c.o
+
+src/game/g_ai.i: src/game/g_ai.c.i
+.PHONY : src/game/g_ai.i
+
+# target to preprocess a source file
+src/game/g_ai.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_ai.c.i
+.PHONY : src/game/g_ai.c.i
+
+src/game/g_ai.s: src/game/g_ai.c.s
+.PHONY : src/game/g_ai.s
+
+# target to generate assembly for a file
+src/game/g_ai.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_ai.c.s
+.PHONY : src/game/g_ai.c.s
+
+src/game/g_chase.o: src/game/g_chase.c.o
+.PHONY : src/game/g_chase.o
+
+# target to build an object file
+src/game/g_chase.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_chase.c.o
+.PHONY : src/game/g_chase.c.o
+
+src/game/g_chase.i: src/game/g_chase.c.i
+.PHONY : src/game/g_chase.i
+
+# target to preprocess a source file
+src/game/g_chase.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_chase.c.i
+.PHONY : src/game/g_chase.c.i
+
+src/game/g_chase.s: src/game/g_chase.c.s
+.PHONY : src/game/g_chase.s
+
+# target to generate assembly for a file
+src/game/g_chase.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_chase.c.s
+.PHONY : src/game/g_chase.c.s
+
+src/game/g_cmds.o: src/game/g_cmds.c.o
+.PHONY : src/game/g_cmds.o
+
+# target to build an object file
+src/game/g_cmds.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_cmds.c.o
+.PHONY : src/game/g_cmds.c.o
+
+src/game/g_cmds.i: src/game/g_cmds.c.i
+.PHONY : src/game/g_cmds.i
+
+# target to preprocess a source file
+src/game/g_cmds.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_cmds.c.i
+.PHONY : src/game/g_cmds.c.i
+
+src/game/g_cmds.s: src/game/g_cmds.c.s
+.PHONY : src/game/g_cmds.s
+
+# target to generate assembly for a file
+src/game/g_cmds.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_cmds.c.s
+.PHONY : src/game/g_cmds.c.s
+
+src/game/g_combat.o: src/game/g_combat.c.o
+.PHONY : src/game/g_combat.o
+
+# target to build an object file
+src/game/g_combat.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_combat.c.o
+.PHONY : src/game/g_combat.c.o
+
+src/game/g_combat.i: src/game/g_combat.c.i
+.PHONY : src/game/g_combat.i
+
+# target to preprocess a source file
+src/game/g_combat.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_combat.c.i
+.PHONY : src/game/g_combat.c.i
+
+src/game/g_combat.s: src/game/g_combat.c.s
+.PHONY : src/game/g_combat.s
+
+# target to generate assembly for a file
+src/game/g_combat.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_combat.c.s
+.PHONY : src/game/g_combat.c.s
+
+src/game/g_func.o: src/game/g_func.c.o
+.PHONY : src/game/g_func.o
+
+# target to build an object file
+src/game/g_func.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_func.c.o
+.PHONY : src/game/g_func.c.o
+
+src/game/g_func.i: src/game/g_func.c.i
+.PHONY : src/game/g_func.i
+
+# target to preprocess a source file
+src/game/g_func.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_func.c.i
+.PHONY : src/game/g_func.c.i
+
+src/game/g_func.s: src/game/g_func.c.s
+.PHONY : src/game/g_func.s
+
+# target to generate assembly for a file
+src/game/g_func.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_func.c.s
+.PHONY : src/game/g_func.c.s
+
+src/game/g_items.o: src/game/g_items.c.o
+.PHONY : src/game/g_items.o
+
+# target to build an object file
+src/game/g_items.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_items.c.o
+.PHONY : src/game/g_items.c.o
+
+src/game/g_items.i: src/game/g_items.c.i
+.PHONY : src/game/g_items.i
+
+# target to preprocess a source file
+src/game/g_items.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_items.c.i
+.PHONY : src/game/g_items.c.i
+
+src/game/g_items.s: src/game/g_items.c.s
+.PHONY : src/game/g_items.s
+
+# target to generate assembly for a file
+src/game/g_items.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_items.c.s
+.PHONY : src/game/g_items.c.s
+
+src/game/g_main.o: src/game/g_main.c.o
+.PHONY : src/game/g_main.o
+
+# target to build an object file
+src/game/g_main.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_main.c.o
+.PHONY : src/game/g_main.c.o
+
+src/game/g_main.i: src/game/g_main.c.i
+.PHONY : src/game/g_main.i
+
+# target to preprocess a source file
+src/game/g_main.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_main.c.i
+.PHONY : src/game/g_main.c.i
+
+src/game/g_main.s: src/game/g_main.c.s
+.PHONY : src/game/g_main.s
+
+# target to generate assembly for a file
+src/game/g_main.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_main.c.s
+.PHONY : src/game/g_main.c.s
+
+src/game/g_misc.o: src/game/g_misc.c.o
+.PHONY : src/game/g_misc.o
+
+# target to build an object file
+src/game/g_misc.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_misc.c.o
+.PHONY : src/game/g_misc.c.o
+
+src/game/g_misc.i: src/game/g_misc.c.i
+.PHONY : src/game/g_misc.i
+
+# target to preprocess a source file
+src/game/g_misc.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_misc.c.i
+.PHONY : src/game/g_misc.c.i
+
+src/game/g_misc.s: src/game/g_misc.c.s
+.PHONY : src/game/g_misc.s
+
+# target to generate assembly for a file
+src/game/g_misc.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_misc.c.s
+.PHONY : src/game/g_misc.c.s
+
+src/game/g_monster.o: src/game/g_monster.c.o
+.PHONY : src/game/g_monster.o
+
+# target to build an object file
+src/game/g_monster.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_monster.c.o
+.PHONY : src/game/g_monster.c.o
+
+src/game/g_monster.i: src/game/g_monster.c.i
+.PHONY : src/game/g_monster.i
+
+# target to preprocess a source file
+src/game/g_monster.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_monster.c.i
+.PHONY : src/game/g_monster.c.i
+
+src/game/g_monster.s: src/game/g_monster.c.s
+.PHONY : src/game/g_monster.s
+
+# target to generate assembly for a file
+src/game/g_monster.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_monster.c.s
+.PHONY : src/game/g_monster.c.s
+
+src/game/g_phys.o: src/game/g_phys.c.o
+.PHONY : src/game/g_phys.o
+
+# target to build an object file
+src/game/g_phys.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_phys.c.o
+.PHONY : src/game/g_phys.c.o
+
+src/game/g_phys.i: src/game/g_phys.c.i
+.PHONY : src/game/g_phys.i
+
+# target to preprocess a source file
+src/game/g_phys.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_phys.c.i
+.PHONY : src/game/g_phys.c.i
+
+src/game/g_phys.s: src/game/g_phys.c.s
+.PHONY : src/game/g_phys.s
+
+# target to generate assembly for a file
+src/game/g_phys.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_phys.c.s
+.PHONY : src/game/g_phys.c.s
+
+src/game/g_spawn.o: src/game/g_spawn.c.o
+.PHONY : src/game/g_spawn.o
+
+# target to build an object file
+src/game/g_spawn.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_spawn.c.o
+.PHONY : src/game/g_spawn.c.o
+
+src/game/g_spawn.i: src/game/g_spawn.c.i
+.PHONY : src/game/g_spawn.i
+
+# target to preprocess a source file
+src/game/g_spawn.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_spawn.c.i
+.PHONY : src/game/g_spawn.c.i
+
+src/game/g_spawn.s: src/game/g_spawn.c.s
+.PHONY : src/game/g_spawn.s
+
+# target to generate assembly for a file
+src/game/g_spawn.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_spawn.c.s
+.PHONY : src/game/g_spawn.c.s
+
+src/game/g_svcmds.o: src/game/g_svcmds.c.o
+.PHONY : src/game/g_svcmds.o
+
+# target to build an object file
+src/game/g_svcmds.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_svcmds.c.o
+.PHONY : src/game/g_svcmds.c.o
+
+src/game/g_svcmds.i: src/game/g_svcmds.c.i
+.PHONY : src/game/g_svcmds.i
+
+# target to preprocess a source file
+src/game/g_svcmds.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_svcmds.c.i
+.PHONY : src/game/g_svcmds.c.i
+
+src/game/g_svcmds.s: src/game/g_svcmds.c.s
+.PHONY : src/game/g_svcmds.s
+
+# target to generate assembly for a file
+src/game/g_svcmds.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_svcmds.c.s
+.PHONY : src/game/g_svcmds.c.s
+
+src/game/g_target.o: src/game/g_target.c.o
+.PHONY : src/game/g_target.o
+
+# target to build an object file
+src/game/g_target.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_target.c.o
+.PHONY : src/game/g_target.c.o
+
+src/game/g_target.i: src/game/g_target.c.i
+.PHONY : src/game/g_target.i
+
+# target to preprocess a source file
+src/game/g_target.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_target.c.i
+.PHONY : src/game/g_target.c.i
+
+src/game/g_target.s: src/game/g_target.c.s
+.PHONY : src/game/g_target.s
+
+# target to generate assembly for a file
+src/game/g_target.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_target.c.s
+.PHONY : src/game/g_target.c.s
+
+src/game/g_trigger.o: src/game/g_trigger.c.o
+.PHONY : src/game/g_trigger.o
+
+# target to build an object file
+src/game/g_trigger.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_trigger.c.o
+.PHONY : src/game/g_trigger.c.o
+
+src/game/g_trigger.i: src/game/g_trigger.c.i
+.PHONY : src/game/g_trigger.i
+
+# target to preprocess a source file
+src/game/g_trigger.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_trigger.c.i
+.PHONY : src/game/g_trigger.c.i
+
+src/game/g_trigger.s: src/game/g_trigger.c.s
+.PHONY : src/game/g_trigger.s
+
+# target to generate assembly for a file
+src/game/g_trigger.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_trigger.c.s
+.PHONY : src/game/g_trigger.c.s
+
+src/game/g_turret.o: src/game/g_turret.c.o
+.PHONY : src/game/g_turret.o
+
+# target to build an object file
+src/game/g_turret.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_turret.c.o
+.PHONY : src/game/g_turret.c.o
+
+src/game/g_turret.i: src/game/g_turret.c.i
+.PHONY : src/game/g_turret.i
+
+# target to preprocess a source file
+src/game/g_turret.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_turret.c.i
+.PHONY : src/game/g_turret.c.i
+
+src/game/g_turret.s: src/game/g_turret.c.s
+.PHONY : src/game/g_turret.s
+
+# target to generate assembly for a file
+src/game/g_turret.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_turret.c.s
+.PHONY : src/game/g_turret.c.s
+
+src/game/g_utils.o: src/game/g_utils.c.o
+.PHONY : src/game/g_utils.o
+
+# target to build an object file
+src/game/g_utils.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_utils.c.o
+.PHONY : src/game/g_utils.c.o
+
+src/game/g_utils.i: src/game/g_utils.c.i
+.PHONY : src/game/g_utils.i
+
+# target to preprocess a source file
+src/game/g_utils.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_utils.c.i
+.PHONY : src/game/g_utils.c.i
+
+src/game/g_utils.s: src/game/g_utils.c.s
+.PHONY : src/game/g_utils.s
+
+# target to generate assembly for a file
+src/game/g_utils.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_utils.c.s
+.PHONY : src/game/g_utils.c.s
+
+src/game/g_weapon.o: src/game/g_weapon.c.o
+.PHONY : src/game/g_weapon.o
+
+# target to build an object file
+src/game/g_weapon.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_weapon.c.o
+.PHONY : src/game/g_weapon.c.o
+
+src/game/g_weapon.i: src/game/g_weapon.c.i
+.PHONY : src/game/g_weapon.i
+
+# target to preprocess a source file
+src/game/g_weapon.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_weapon.c.i
+.PHONY : src/game/g_weapon.c.i
+
+src/game/g_weapon.s: src/game/g_weapon.c.s
+.PHONY : src/game/g_weapon.s
+
+# target to generate assembly for a file
+src/game/g_weapon.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/g_weapon.c.s
+.PHONY : src/game/g_weapon.c.s
+
+src/game/monster/berserker/berserker.o: src/game/monster/berserker/berserker.c.o
+.PHONY : src/game/monster/berserker/berserker.o
+
+# target to build an object file
+src/game/monster/berserker/berserker.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/berserker/berserker.c.o
+.PHONY : src/game/monster/berserker/berserker.c.o
+
+src/game/monster/berserker/berserker.i: src/game/monster/berserker/berserker.c.i
+.PHONY : src/game/monster/berserker/berserker.i
+
+# target to preprocess a source file
+src/game/monster/berserker/berserker.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/berserker/berserker.c.i
+.PHONY : src/game/monster/berserker/berserker.c.i
+
+src/game/monster/berserker/berserker.s: src/game/monster/berserker/berserker.c.s
+.PHONY : src/game/monster/berserker/berserker.s
+
+# target to generate assembly for a file
+src/game/monster/berserker/berserker.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/berserker/berserker.c.s
+.PHONY : src/game/monster/berserker/berserker.c.s
+
+src/game/monster/boss2/boss2.o: src/game/monster/boss2/boss2.c.o
+.PHONY : src/game/monster/boss2/boss2.o
+
+# target to build an object file
+src/game/monster/boss2/boss2.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/boss2/boss2.c.o
+.PHONY : src/game/monster/boss2/boss2.c.o
+
+src/game/monster/boss2/boss2.i: src/game/monster/boss2/boss2.c.i
+.PHONY : src/game/monster/boss2/boss2.i
+
+# target to preprocess a source file
+src/game/monster/boss2/boss2.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/boss2/boss2.c.i
+.PHONY : src/game/monster/boss2/boss2.c.i
+
+src/game/monster/boss2/boss2.s: src/game/monster/boss2/boss2.c.s
+.PHONY : src/game/monster/boss2/boss2.s
+
+# target to generate assembly for a file
+src/game/monster/boss2/boss2.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/boss2/boss2.c.s
+.PHONY : src/game/monster/boss2/boss2.c.s
+
+src/game/monster/boss3/boss3.o: src/game/monster/boss3/boss3.c.o
+.PHONY : src/game/monster/boss3/boss3.o
+
+# target to build an object file
+src/game/monster/boss3/boss3.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/boss3/boss3.c.o
+.PHONY : src/game/monster/boss3/boss3.c.o
+
+src/game/monster/boss3/boss3.i: src/game/monster/boss3/boss3.c.i
+.PHONY : src/game/monster/boss3/boss3.i
+
+# target to preprocess a source file
+src/game/monster/boss3/boss3.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/boss3/boss3.c.i
+.PHONY : src/game/monster/boss3/boss3.c.i
+
+src/game/monster/boss3/boss3.s: src/game/monster/boss3/boss3.c.s
+.PHONY : src/game/monster/boss3/boss3.s
+
+# target to generate assembly for a file
+src/game/monster/boss3/boss3.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/boss3/boss3.c.s
+.PHONY : src/game/monster/boss3/boss3.c.s
+
+src/game/monster/boss3/boss31.o: src/game/monster/boss3/boss31.c.o
+.PHONY : src/game/monster/boss3/boss31.o
+
+# target to build an object file
+src/game/monster/boss3/boss31.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/boss3/boss31.c.o
+.PHONY : src/game/monster/boss3/boss31.c.o
+
+src/game/monster/boss3/boss31.i: src/game/monster/boss3/boss31.c.i
+.PHONY : src/game/monster/boss3/boss31.i
+
+# target to preprocess a source file
+src/game/monster/boss3/boss31.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/boss3/boss31.c.i
+.PHONY : src/game/monster/boss3/boss31.c.i
+
+src/game/monster/boss3/boss31.s: src/game/monster/boss3/boss31.c.s
+.PHONY : src/game/monster/boss3/boss31.s
+
+# target to generate assembly for a file
+src/game/monster/boss3/boss31.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/boss3/boss31.c.s
+.PHONY : src/game/monster/boss3/boss31.c.s
+
+src/game/monster/boss3/boss32.o: src/game/monster/boss3/boss32.c.o
+.PHONY : src/game/monster/boss3/boss32.o
+
+# target to build an object file
+src/game/monster/boss3/boss32.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/boss3/boss32.c.o
+.PHONY : src/game/monster/boss3/boss32.c.o
+
+src/game/monster/boss3/boss32.i: src/game/monster/boss3/boss32.c.i
+.PHONY : src/game/monster/boss3/boss32.i
+
+# target to preprocess a source file
+src/game/monster/boss3/boss32.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/boss3/boss32.c.i
+.PHONY : src/game/monster/boss3/boss32.c.i
+
+src/game/monster/boss3/boss32.s: src/game/monster/boss3/boss32.c.s
+.PHONY : src/game/monster/boss3/boss32.s
+
+# target to generate assembly for a file
+src/game/monster/boss3/boss32.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/boss3/boss32.c.s
+.PHONY : src/game/monster/boss3/boss32.c.s
+
+src/game/monster/brain/brain.o: src/game/monster/brain/brain.c.o
+.PHONY : src/game/monster/brain/brain.o
+
+# target to build an object file
+src/game/monster/brain/brain.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/brain/brain.c.o
+.PHONY : src/game/monster/brain/brain.c.o
+
+src/game/monster/brain/brain.i: src/game/monster/brain/brain.c.i
+.PHONY : src/game/monster/brain/brain.i
+
+# target to preprocess a source file
+src/game/monster/brain/brain.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/brain/brain.c.i
+.PHONY : src/game/monster/brain/brain.c.i
+
+src/game/monster/brain/brain.s: src/game/monster/brain/brain.c.s
+.PHONY : src/game/monster/brain/brain.s
+
+# target to generate assembly for a file
+src/game/monster/brain/brain.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/brain/brain.c.s
+.PHONY : src/game/monster/brain/brain.c.s
+
+src/game/monster/chick/chick.o: src/game/monster/chick/chick.c.o
+.PHONY : src/game/monster/chick/chick.o
+
+# target to build an object file
+src/game/monster/chick/chick.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/chick/chick.c.o
+.PHONY : src/game/monster/chick/chick.c.o
+
+src/game/monster/chick/chick.i: src/game/monster/chick/chick.c.i
+.PHONY : src/game/monster/chick/chick.i
+
+# target to preprocess a source file
+src/game/monster/chick/chick.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/chick/chick.c.i
+.PHONY : src/game/monster/chick/chick.c.i
+
+src/game/monster/chick/chick.s: src/game/monster/chick/chick.c.s
+.PHONY : src/game/monster/chick/chick.s
+
+# target to generate assembly for a file
+src/game/monster/chick/chick.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/chick/chick.c.s
+.PHONY : src/game/monster/chick/chick.c.s
+
+src/game/monster/flipper/flipper.o: src/game/monster/flipper/flipper.c.o
+.PHONY : src/game/monster/flipper/flipper.o
+
+# target to build an object file
+src/game/monster/flipper/flipper.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/flipper/flipper.c.o
+.PHONY : src/game/monster/flipper/flipper.c.o
+
+src/game/monster/flipper/flipper.i: src/game/monster/flipper/flipper.c.i
+.PHONY : src/game/monster/flipper/flipper.i
+
+# target to preprocess a source file
+src/game/monster/flipper/flipper.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/flipper/flipper.c.i
+.PHONY : src/game/monster/flipper/flipper.c.i
+
+src/game/monster/flipper/flipper.s: src/game/monster/flipper/flipper.c.s
+.PHONY : src/game/monster/flipper/flipper.s
+
+# target to generate assembly for a file
+src/game/monster/flipper/flipper.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/flipper/flipper.c.s
+.PHONY : src/game/monster/flipper/flipper.c.s
+
+src/game/monster/float/float.o: src/game/monster/float/float.c.o
+.PHONY : src/game/monster/float/float.o
+
+# target to build an object file
+src/game/monster/float/float.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/float/float.c.o
+.PHONY : src/game/monster/float/float.c.o
+
+src/game/monster/float/float.i: src/game/monster/float/float.c.i
+.PHONY : src/game/monster/float/float.i
+
+# target to preprocess a source file
+src/game/monster/float/float.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/float/float.c.i
+.PHONY : src/game/monster/float/float.c.i
+
+src/game/monster/float/float.s: src/game/monster/float/float.c.s
+.PHONY : src/game/monster/float/float.s
+
+# target to generate assembly for a file
+src/game/monster/float/float.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/float/float.c.s
+.PHONY : src/game/monster/float/float.c.s
+
+src/game/monster/flyer/flyer.o: src/game/monster/flyer/flyer.c.o
+.PHONY : src/game/monster/flyer/flyer.o
+
+# target to build an object file
+src/game/monster/flyer/flyer.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/flyer/flyer.c.o
+.PHONY : src/game/monster/flyer/flyer.c.o
+
+src/game/monster/flyer/flyer.i: src/game/monster/flyer/flyer.c.i
+.PHONY : src/game/monster/flyer/flyer.i
+
+# target to preprocess a source file
+src/game/monster/flyer/flyer.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/flyer/flyer.c.i
+.PHONY : src/game/monster/flyer/flyer.c.i
+
+src/game/monster/flyer/flyer.s: src/game/monster/flyer/flyer.c.s
+.PHONY : src/game/monster/flyer/flyer.s
+
+# target to generate assembly for a file
+src/game/monster/flyer/flyer.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/flyer/flyer.c.s
+.PHONY : src/game/monster/flyer/flyer.c.s
+
+src/game/monster/gladiator/gladiator.o: src/game/monster/gladiator/gladiator.c.o
+.PHONY : src/game/monster/gladiator/gladiator.o
+
+# target to build an object file
+src/game/monster/gladiator/gladiator.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/gladiator/gladiator.c.o
+.PHONY : src/game/monster/gladiator/gladiator.c.o
+
+src/game/monster/gladiator/gladiator.i: src/game/monster/gladiator/gladiator.c.i
+.PHONY : src/game/monster/gladiator/gladiator.i
+
+# target to preprocess a source file
+src/game/monster/gladiator/gladiator.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/gladiator/gladiator.c.i
+.PHONY : src/game/monster/gladiator/gladiator.c.i
+
+src/game/monster/gladiator/gladiator.s: src/game/monster/gladiator/gladiator.c.s
+.PHONY : src/game/monster/gladiator/gladiator.s
+
+# target to generate assembly for a file
+src/game/monster/gladiator/gladiator.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/gladiator/gladiator.c.s
+.PHONY : src/game/monster/gladiator/gladiator.c.s
+
+src/game/monster/gunner/gunner.o: src/game/monster/gunner/gunner.c.o
+.PHONY : src/game/monster/gunner/gunner.o
+
+# target to build an object file
+src/game/monster/gunner/gunner.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/gunner/gunner.c.o
+.PHONY : src/game/monster/gunner/gunner.c.o
+
+src/game/monster/gunner/gunner.i: src/game/monster/gunner/gunner.c.i
+.PHONY : src/game/monster/gunner/gunner.i
+
+# target to preprocess a source file
+src/game/monster/gunner/gunner.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/gunner/gunner.c.i
+.PHONY : src/game/monster/gunner/gunner.c.i
+
+src/game/monster/gunner/gunner.s: src/game/monster/gunner/gunner.c.s
+.PHONY : src/game/monster/gunner/gunner.s
+
+# target to generate assembly for a file
+src/game/monster/gunner/gunner.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/gunner/gunner.c.s
+.PHONY : src/game/monster/gunner/gunner.c.s
+
+src/game/monster/hover/hover.o: src/game/monster/hover/hover.c.o
+.PHONY : src/game/monster/hover/hover.o
+
+# target to build an object file
+src/game/monster/hover/hover.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/hover/hover.c.o
+.PHONY : src/game/monster/hover/hover.c.o
+
+src/game/monster/hover/hover.i: src/game/monster/hover/hover.c.i
+.PHONY : src/game/monster/hover/hover.i
+
+# target to preprocess a source file
+src/game/monster/hover/hover.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/hover/hover.c.i
+.PHONY : src/game/monster/hover/hover.c.i
+
+src/game/monster/hover/hover.s: src/game/monster/hover/hover.c.s
+.PHONY : src/game/monster/hover/hover.s
+
+# target to generate assembly for a file
+src/game/monster/hover/hover.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/hover/hover.c.s
+.PHONY : src/game/monster/hover/hover.c.s
+
+src/game/monster/infantry/infantry.o: src/game/monster/infantry/infantry.c.o
+.PHONY : src/game/monster/infantry/infantry.o
+
+# target to build an object file
+src/game/monster/infantry/infantry.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/infantry/infantry.c.o
+.PHONY : src/game/monster/infantry/infantry.c.o
+
+src/game/monster/infantry/infantry.i: src/game/monster/infantry/infantry.c.i
+.PHONY : src/game/monster/infantry/infantry.i
+
+# target to preprocess a source file
+src/game/monster/infantry/infantry.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/infantry/infantry.c.i
+.PHONY : src/game/monster/infantry/infantry.c.i
+
+src/game/monster/infantry/infantry.s: src/game/monster/infantry/infantry.c.s
+.PHONY : src/game/monster/infantry/infantry.s
+
+# target to generate assembly for a file
+src/game/monster/infantry/infantry.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/infantry/infantry.c.s
+.PHONY : src/game/monster/infantry/infantry.c.s
+
+src/game/monster/insane/insane.o: src/game/monster/insane/insane.c.o
+.PHONY : src/game/monster/insane/insane.o
+
+# target to build an object file
+src/game/monster/insane/insane.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/insane/insane.c.o
+.PHONY : src/game/monster/insane/insane.c.o
+
+src/game/monster/insane/insane.i: src/game/monster/insane/insane.c.i
+.PHONY : src/game/monster/insane/insane.i
+
+# target to preprocess a source file
+src/game/monster/insane/insane.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/insane/insane.c.i
+.PHONY : src/game/monster/insane/insane.c.i
+
+src/game/monster/insane/insane.s: src/game/monster/insane/insane.c.s
+.PHONY : src/game/monster/insane/insane.s
+
+# target to generate assembly for a file
+src/game/monster/insane/insane.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/insane/insane.c.s
+.PHONY : src/game/monster/insane/insane.c.s
+
+src/game/monster/medic/medic.o: src/game/monster/medic/medic.c.o
+.PHONY : src/game/monster/medic/medic.o
+
+# target to build an object file
+src/game/monster/medic/medic.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/medic/medic.c.o
+.PHONY : src/game/monster/medic/medic.c.o
+
+src/game/monster/medic/medic.i: src/game/monster/medic/medic.c.i
+.PHONY : src/game/monster/medic/medic.i
+
+# target to preprocess a source file
+src/game/monster/medic/medic.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/medic/medic.c.i
+.PHONY : src/game/monster/medic/medic.c.i
+
+src/game/monster/medic/medic.s: src/game/monster/medic/medic.c.s
+.PHONY : src/game/monster/medic/medic.s
+
+# target to generate assembly for a file
+src/game/monster/medic/medic.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/medic/medic.c.s
+.PHONY : src/game/monster/medic/medic.c.s
+
+src/game/monster/misc/move.o: src/game/monster/misc/move.c.o
+.PHONY : src/game/monster/misc/move.o
+
+# target to build an object file
+src/game/monster/misc/move.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/misc/move.c.o
+.PHONY : src/game/monster/misc/move.c.o
+
+src/game/monster/misc/move.i: src/game/monster/misc/move.c.i
+.PHONY : src/game/monster/misc/move.i
+
+# target to preprocess a source file
+src/game/monster/misc/move.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/misc/move.c.i
+.PHONY : src/game/monster/misc/move.c.i
+
+src/game/monster/misc/move.s: src/game/monster/misc/move.c.s
+.PHONY : src/game/monster/misc/move.s
+
+# target to generate assembly for a file
+src/game/monster/misc/move.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/misc/move.c.s
+.PHONY : src/game/monster/misc/move.c.s
+
+src/game/monster/mutant/mutant.o: src/game/monster/mutant/mutant.c.o
+.PHONY : src/game/monster/mutant/mutant.o
+
+# target to build an object file
+src/game/monster/mutant/mutant.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/mutant/mutant.c.o
+.PHONY : src/game/monster/mutant/mutant.c.o
+
+src/game/monster/mutant/mutant.i: src/game/monster/mutant/mutant.c.i
+.PHONY : src/game/monster/mutant/mutant.i
+
+# target to preprocess a source file
+src/game/monster/mutant/mutant.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/mutant/mutant.c.i
+.PHONY : src/game/monster/mutant/mutant.c.i
+
+src/game/monster/mutant/mutant.s: src/game/monster/mutant/mutant.c.s
+.PHONY : src/game/monster/mutant/mutant.s
+
+# target to generate assembly for a file
+src/game/monster/mutant/mutant.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/mutant/mutant.c.s
+.PHONY : src/game/monster/mutant/mutant.c.s
+
+src/game/monster/parasite/parasite.o: src/game/monster/parasite/parasite.c.o
+.PHONY : src/game/monster/parasite/parasite.o
+
+# target to build an object file
+src/game/monster/parasite/parasite.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/parasite/parasite.c.o
+.PHONY : src/game/monster/parasite/parasite.c.o
+
+src/game/monster/parasite/parasite.i: src/game/monster/parasite/parasite.c.i
+.PHONY : src/game/monster/parasite/parasite.i
+
+# target to preprocess a source file
+src/game/monster/parasite/parasite.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/parasite/parasite.c.i
+.PHONY : src/game/monster/parasite/parasite.c.i
+
+src/game/monster/parasite/parasite.s: src/game/monster/parasite/parasite.c.s
+.PHONY : src/game/monster/parasite/parasite.s
+
+# target to generate assembly for a file
+src/game/monster/parasite/parasite.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/parasite/parasite.c.s
+.PHONY : src/game/monster/parasite/parasite.c.s
+
+src/game/monster/soldier/soldier.o: src/game/monster/soldier/soldier.c.o
+.PHONY : src/game/monster/soldier/soldier.o
+
+# target to build an object file
+src/game/monster/soldier/soldier.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/soldier/soldier.c.o
+.PHONY : src/game/monster/soldier/soldier.c.o
+
+src/game/monster/soldier/soldier.i: src/game/monster/soldier/soldier.c.i
+.PHONY : src/game/monster/soldier/soldier.i
+
+# target to preprocess a source file
+src/game/monster/soldier/soldier.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/soldier/soldier.c.i
+.PHONY : src/game/monster/soldier/soldier.c.i
+
+src/game/monster/soldier/soldier.s: src/game/monster/soldier/soldier.c.s
+.PHONY : src/game/monster/soldier/soldier.s
+
+# target to generate assembly for a file
+src/game/monster/soldier/soldier.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/soldier/soldier.c.s
+.PHONY : src/game/monster/soldier/soldier.c.s
+
+src/game/monster/supertank/supertank.o: src/game/monster/supertank/supertank.c.o
+.PHONY : src/game/monster/supertank/supertank.o
+
+# target to build an object file
+src/game/monster/supertank/supertank.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/supertank/supertank.c.o
+.PHONY : src/game/monster/supertank/supertank.c.o
+
+src/game/monster/supertank/supertank.i: src/game/monster/supertank/supertank.c.i
+.PHONY : src/game/monster/supertank/supertank.i
+
+# target to preprocess a source file
+src/game/monster/supertank/supertank.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/supertank/supertank.c.i
+.PHONY : src/game/monster/supertank/supertank.c.i
+
+src/game/monster/supertank/supertank.s: src/game/monster/supertank/supertank.c.s
+.PHONY : src/game/monster/supertank/supertank.s
+
+# target to generate assembly for a file
+src/game/monster/supertank/supertank.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/supertank/supertank.c.s
+.PHONY : src/game/monster/supertank/supertank.c.s
+
+src/game/monster/tank/tank.o: src/game/monster/tank/tank.c.o
+.PHONY : src/game/monster/tank/tank.o
+
+# target to build an object file
+src/game/monster/tank/tank.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/tank/tank.c.o
+.PHONY : src/game/monster/tank/tank.c.o
+
+src/game/monster/tank/tank.i: src/game/monster/tank/tank.c.i
+.PHONY : src/game/monster/tank/tank.i
+
+# target to preprocess a source file
+src/game/monster/tank/tank.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/tank/tank.c.i
+.PHONY : src/game/monster/tank/tank.c.i
+
+src/game/monster/tank/tank.s: src/game/monster/tank/tank.c.s
+.PHONY : src/game/monster/tank/tank.s
+
+# target to generate assembly for a file
+src/game/monster/tank/tank.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/tank/tank.c.s
+.PHONY : src/game/monster/tank/tank.c.s
+
+src/game/player/client.o: src/game/player/client.c.o
+.PHONY : src/game/player/client.o
+
+# target to build an object file
+src/game/player/client.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/player/client.c.o
+.PHONY : src/game/player/client.c.o
+
+src/game/player/client.i: src/game/player/client.c.i
+.PHONY : src/game/player/client.i
+
+# target to preprocess a source file
+src/game/player/client.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/player/client.c.i
+.PHONY : src/game/player/client.c.i
+
+src/game/player/client.s: src/game/player/client.c.s
+.PHONY : src/game/player/client.s
+
+# target to generate assembly for a file
+src/game/player/client.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/player/client.c.s
+.PHONY : src/game/player/client.c.s
+
+src/game/player/hud.o: src/game/player/hud.c.o
+.PHONY : src/game/player/hud.o
+
+# target to build an object file
+src/game/player/hud.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/player/hud.c.o
+.PHONY : src/game/player/hud.c.o
+
+src/game/player/hud.i: src/game/player/hud.c.i
+.PHONY : src/game/player/hud.i
+
+# target to preprocess a source file
+src/game/player/hud.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/player/hud.c.i
+.PHONY : src/game/player/hud.c.i
+
+src/game/player/hud.s: src/game/player/hud.c.s
+.PHONY : src/game/player/hud.s
+
+# target to generate assembly for a file
+src/game/player/hud.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/player/hud.c.s
+.PHONY : src/game/player/hud.c.s
+
+src/game/player/trail.o: src/game/player/trail.c.o
+.PHONY : src/game/player/trail.o
+
+# target to build an object file
+src/game/player/trail.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/player/trail.c.o
+.PHONY : src/game/player/trail.c.o
+
+src/game/player/trail.i: src/game/player/trail.c.i
+.PHONY : src/game/player/trail.i
+
+# target to preprocess a source file
+src/game/player/trail.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/player/trail.c.i
+.PHONY : src/game/player/trail.c.i
+
+src/game/player/trail.s: src/game/player/trail.c.s
+.PHONY : src/game/player/trail.s
+
+# target to generate assembly for a file
+src/game/player/trail.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/player/trail.c.s
+.PHONY : src/game/player/trail.c.s
+
+src/game/player/view.o: src/game/player/view.c.o
+.PHONY : src/game/player/view.o
+
+# target to build an object file
+src/game/player/view.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/player/view.c.o
+.PHONY : src/game/player/view.c.o
+
+src/game/player/view.i: src/game/player/view.c.i
+.PHONY : src/game/player/view.i
+
+# target to preprocess a source file
+src/game/player/view.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/player/view.c.i
+.PHONY : src/game/player/view.c.i
+
+src/game/player/view.s: src/game/player/view.c.s
+.PHONY : src/game/player/view.s
+
+# target to generate assembly for a file
+src/game/player/view.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/player/view.c.s
+.PHONY : src/game/player/view.c.s
+
+src/game/player/weapon.o: src/game/player/weapon.c.o
+.PHONY : src/game/player/weapon.o
+
+# target to build an object file
+src/game/player/weapon.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/player/weapon.c.o
+.PHONY : src/game/player/weapon.c.o
+
+src/game/player/weapon.i: src/game/player/weapon.c.i
+.PHONY : src/game/player/weapon.i
+
+# target to preprocess a source file
+src/game/player/weapon.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/player/weapon.c.i
+.PHONY : src/game/player/weapon.c.i
+
+src/game/player/weapon.s: src/game/player/weapon.c.s
+.PHONY : src/game/player/weapon.s
+
+# target to generate assembly for a file
+src/game/player/weapon.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/player/weapon.c.s
+.PHONY : src/game/player/weapon.c.s
+
+src/game/savegame/savegame.o: src/game/savegame/savegame.c.o
+.PHONY : src/game/savegame/savegame.o
+
+# target to build an object file
+src/game/savegame/savegame.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/savegame/savegame.c.o
+.PHONY : src/game/savegame/savegame.c.o
+
+src/game/savegame/savegame.i: src/game/savegame/savegame.c.i
+.PHONY : src/game/savegame/savegame.i
+
+# target to preprocess a source file
+src/game/savegame/savegame.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/savegame/savegame.c.i
+.PHONY : src/game/savegame/savegame.c.i
+
+src/game/savegame/savegame.s: src/game/savegame/savegame.c.s
+.PHONY : src/game/savegame/savegame.s
+
+# target to generate assembly for a file
+src/game/savegame/savegame.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/savegame/savegame.c.s
+.PHONY : src/game/savegame/savegame.c.s
+
+src/server/sv_cmd.o: src/server/sv_cmd.c.o
+.PHONY : src/server/sv_cmd.o
+
+# target to build an object file
+src/server/sv_cmd.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/server/sv_cmd.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/server/sv_cmd.c.o
+.PHONY : src/server/sv_cmd.c.o
+
+src/server/sv_cmd.i: src/server/sv_cmd.c.i
+.PHONY : src/server/sv_cmd.i
+
+# target to preprocess a source file
+src/server/sv_cmd.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/server/sv_cmd.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/server/sv_cmd.c.i
+.PHONY : src/server/sv_cmd.c.i
+
+src/server/sv_cmd.s: src/server/sv_cmd.c.s
+.PHONY : src/server/sv_cmd.s
+
+# target to generate assembly for a file
+src/server/sv_cmd.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/server/sv_cmd.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/server/sv_cmd.c.s
+.PHONY : src/server/sv_cmd.c.s
+
+src/server/sv_conless.o: src/server/sv_conless.c.o
+.PHONY : src/server/sv_conless.o
+
+# target to build an object file
+src/server/sv_conless.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/server/sv_conless.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/server/sv_conless.c.o
+.PHONY : src/server/sv_conless.c.o
+
+src/server/sv_conless.i: src/server/sv_conless.c.i
+.PHONY : src/server/sv_conless.i
+
+# target to preprocess a source file
+src/server/sv_conless.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/server/sv_conless.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/server/sv_conless.c.i
+.PHONY : src/server/sv_conless.c.i
+
+src/server/sv_conless.s: src/server/sv_conless.c.s
+.PHONY : src/server/sv_conless.s
+
+# target to generate assembly for a file
+src/server/sv_conless.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/server/sv_conless.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/server/sv_conless.c.s
+.PHONY : src/server/sv_conless.c.s
+
+src/server/sv_entities.o: src/server/sv_entities.c.o
+.PHONY : src/server/sv_entities.o
+
+# target to build an object file
+src/server/sv_entities.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/server/sv_entities.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/server/sv_entities.c.o
+.PHONY : src/server/sv_entities.c.o
+
+src/server/sv_entities.i: src/server/sv_entities.c.i
+.PHONY : src/server/sv_entities.i
+
+# target to preprocess a source file
+src/server/sv_entities.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/server/sv_entities.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/server/sv_entities.c.i
+.PHONY : src/server/sv_entities.c.i
+
+src/server/sv_entities.s: src/server/sv_entities.c.s
+.PHONY : src/server/sv_entities.s
+
+# target to generate assembly for a file
+src/server/sv_entities.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/server/sv_entities.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/server/sv_entities.c.s
+.PHONY : src/server/sv_entities.c.s
+
+src/server/sv_game.o: src/server/sv_game.c.o
+.PHONY : src/server/sv_game.o
+
+# target to build an object file
+src/server/sv_game.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/server/sv_game.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/server/sv_game.c.o
+.PHONY : src/server/sv_game.c.o
+
+src/server/sv_game.i: src/server/sv_game.c.i
+.PHONY : src/server/sv_game.i
+
+# target to preprocess a source file
+src/server/sv_game.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/server/sv_game.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/server/sv_game.c.i
+.PHONY : src/server/sv_game.c.i
+
+src/server/sv_game.s: src/server/sv_game.c.s
+.PHONY : src/server/sv_game.s
+
+# target to generate assembly for a file
+src/server/sv_game.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/server/sv_game.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/server/sv_game.c.s
+.PHONY : src/server/sv_game.c.s
+
+src/server/sv_init.o: src/server/sv_init.c.o
+.PHONY : src/server/sv_init.o
+
+# target to build an object file
+src/server/sv_init.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/server/sv_init.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/server/sv_init.c.o
+.PHONY : src/server/sv_init.c.o
+
+src/server/sv_init.i: src/server/sv_init.c.i
+.PHONY : src/server/sv_init.i
+
+# target to preprocess a source file
+src/server/sv_init.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/server/sv_init.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/server/sv_init.c.i
+.PHONY : src/server/sv_init.c.i
+
+src/server/sv_init.s: src/server/sv_init.c.s
+.PHONY : src/server/sv_init.s
+
+# target to generate assembly for a file
+src/server/sv_init.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/server/sv_init.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/server/sv_init.c.s
+.PHONY : src/server/sv_init.c.s
+
+src/server/sv_main.o: src/server/sv_main.c.o
+.PHONY : src/server/sv_main.o
+
+# target to build an object file
+src/server/sv_main.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/server/sv_main.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/server/sv_main.c.o
+.PHONY : src/server/sv_main.c.o
+
+src/server/sv_main.i: src/server/sv_main.c.i
+.PHONY : src/server/sv_main.i
+
+# target to preprocess a source file
+src/server/sv_main.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/server/sv_main.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/server/sv_main.c.i
+.PHONY : src/server/sv_main.c.i
+
+src/server/sv_main.s: src/server/sv_main.c.s
+.PHONY : src/server/sv_main.s
+
+# target to generate assembly for a file
+src/server/sv_main.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/server/sv_main.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/server/sv_main.c.s
+.PHONY : src/server/sv_main.c.s
+
+src/server/sv_save.o: src/server/sv_save.c.o
+.PHONY : src/server/sv_save.o
+
+# target to build an object file
+src/server/sv_save.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/server/sv_save.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/server/sv_save.c.o
+.PHONY : src/server/sv_save.c.o
+
+src/server/sv_save.i: src/server/sv_save.c.i
+.PHONY : src/server/sv_save.i
+
+# target to preprocess a source file
+src/server/sv_save.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/server/sv_save.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/server/sv_save.c.i
+.PHONY : src/server/sv_save.c.i
+
+src/server/sv_save.s: src/server/sv_save.c.s
+.PHONY : src/server/sv_save.s
+
+# target to generate assembly for a file
+src/server/sv_save.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/server/sv_save.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/server/sv_save.c.s
+.PHONY : src/server/sv_save.c.s
+
+src/server/sv_send.o: src/server/sv_send.c.o
+.PHONY : src/server/sv_send.o
+
+# target to build an object file
+src/server/sv_send.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/server/sv_send.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/server/sv_send.c.o
+.PHONY : src/server/sv_send.c.o
+
+src/server/sv_send.i: src/server/sv_send.c.i
+.PHONY : src/server/sv_send.i
+
+# target to preprocess a source file
+src/server/sv_send.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/server/sv_send.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/server/sv_send.c.i
+.PHONY : src/server/sv_send.c.i
+
+src/server/sv_send.s: src/server/sv_send.c.s
+.PHONY : src/server/sv_send.s
+
+# target to generate assembly for a file
+src/server/sv_send.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/server/sv_send.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/server/sv_send.c.s
+.PHONY : src/server/sv_send.c.s
+
+src/server/sv_user.o: src/server/sv_user.c.o
+.PHONY : src/server/sv_user.o
+
+# target to build an object file
+src/server/sv_user.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/server/sv_user.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/server/sv_user.c.o
+.PHONY : src/server/sv_user.c.o
+
+src/server/sv_user.i: src/server/sv_user.c.i
+.PHONY : src/server/sv_user.i
+
+# target to preprocess a source file
+src/server/sv_user.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/server/sv_user.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/server/sv_user.c.i
+.PHONY : src/server/sv_user.c.i
+
+src/server/sv_user.s: src/server/sv_user.c.s
+.PHONY : src/server/sv_user.s
+
+# target to generate assembly for a file
+src/server/sv_user.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/server/sv_user.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/server/sv_user.c.s
+.PHONY : src/server/sv_user.c.s
+
+src/server/sv_world.o: src/server/sv_world.c.o
+.PHONY : src/server/sv_world.o
+
+# target to build an object file
+src/server/sv_world.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/server/sv_world.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/server/sv_world.c.o
+.PHONY : src/server/sv_world.c.o
+
+src/server/sv_world.i: src/server/sv_world.c.i
+.PHONY : src/server/sv_world.i
+
+# target to preprocess a source file
+src/server/sv_world.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/server/sv_world.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/server/sv_world.c.i
+.PHONY : src/server/sv_world.c.i
+
+src/server/sv_world.s: src/server/sv_world.c.s
+.PHONY : src/server/sv_world.s
+
+# target to generate assembly for a file
+src/server/sv_world.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/src/server/sv_world.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/src/server/sv_world.c.s
+.PHONY : src/server/sv_world.c.s
+
+# Help Target
+help:
+	@echo "The following are some of the valid targets for this Makefile:"
+	@echo "... all (the default if no target is provided)"
+	@echo "... clean"
+	@echo "... depend"
+	@echo "... edit_cache"
+	@echo "... rebuild_cache"
+	@echo "... game"
+	@echo "... q2ded"
+	@echo "... quake2"
+	@echo "... ref_gl1"
+	@echo "... ref_gl3"
+	@echo "... ref_gles3"
+	@echo "... ref_soft"
+	@echo "... src/backends/generic/misc.o"
+	@echo "... src/backends/generic/misc.i"
+	@echo "... src/backends/generic/misc.s"
+	@echo "... src/backends/unix/main.o"
+	@echo "... src/backends/unix/main.i"
+	@echo "... src/backends/unix/main.s"
+	@echo "... src/backends/unix/network.o"
+	@echo "... src/backends/unix/network.i"
+	@echo "... src/backends/unix/network.s"
+	@echo "... src/backends/unix/shared/hunk.o"
+	@echo "... src/backends/unix/shared/hunk.i"
+	@echo "... src/backends/unix/shared/hunk.s"
+	@echo "... src/backends/unix/signalhandler.o"
+	@echo "... src/backends/unix/signalhandler.i"
+	@echo "... src/backends/unix/signalhandler.s"
+	@echo "... src/backends/unix/system.o"
+	@echo "... src/backends/unix/system.i"
+	@echo "... src/backends/unix/system.s"
+	@echo "... src/client/cl_cin.o"
+	@echo "... src/client/cl_cin.i"
+	@echo "... src/client/cl_cin.s"
+	@echo "... src/client/cl_console.o"
+	@echo "... src/client/cl_console.i"
+	@echo "... src/client/cl_console.s"
+	@echo "... src/client/cl_download.o"
+	@echo "... src/client/cl_download.i"
+	@echo "... src/client/cl_download.s"
+	@echo "... src/client/cl_effects.o"
+	@echo "... src/client/cl_effects.i"
+	@echo "... src/client/cl_effects.s"
+	@echo "... src/client/cl_entities.o"
+	@echo "... src/client/cl_entities.i"
+	@echo "... src/client/cl_entities.s"
+	@echo "... src/client/cl_input.o"
+	@echo "... src/client/cl_input.i"
+	@echo "... src/client/cl_input.s"
+	@echo "... src/client/cl_inventory.o"
+	@echo "... src/client/cl_inventory.i"
+	@echo "... src/client/cl_inventory.s"
+	@echo "... src/client/cl_keyboard.o"
+	@echo "... src/client/cl_keyboard.i"
+	@echo "... src/client/cl_keyboard.s"
+	@echo "... src/client/cl_lights.o"
+	@echo "... src/client/cl_lights.i"
+	@echo "... src/client/cl_lights.s"
+	@echo "... src/client/cl_main.o"
+	@echo "... src/client/cl_main.i"
+	@echo "... src/client/cl_main.s"
+	@echo "... src/client/cl_network.o"
+	@echo "... src/client/cl_network.i"
+	@echo "... src/client/cl_network.s"
+	@echo "... src/client/cl_parse.o"
+	@echo "... src/client/cl_parse.i"
+	@echo "... src/client/cl_parse.s"
+	@echo "... src/client/cl_particles.o"
+	@echo "... src/client/cl_particles.i"
+	@echo "... src/client/cl_particles.s"
+	@echo "... src/client/cl_prediction.o"
+	@echo "... src/client/cl_prediction.i"
+	@echo "... src/client/cl_prediction.s"
+	@echo "... src/client/cl_screen.o"
+	@echo "... src/client/cl_screen.i"
+	@echo "... src/client/cl_screen.s"
+	@echo "... src/client/cl_tempentities.o"
+	@echo "... src/client/cl_tempentities.i"
+	@echo "... src/client/cl_tempentities.s"
+	@echo "... src/client/cl_view.o"
+	@echo "... src/client/cl_view.i"
+	@echo "... src/client/cl_view.s"
+	@echo "... src/client/curl/download.o"
+	@echo "... src/client/curl/download.i"
+	@echo "... src/client/curl/download.s"
+	@echo "... src/client/curl/qcurl.o"
+	@echo "... src/client/curl/qcurl.i"
+	@echo "... src/client/curl/qcurl.s"
+	@echo "... src/client/input/sdl.o"
+	@echo "... src/client/input/sdl.i"
+	@echo "... src/client/input/sdl.s"
+	@echo "... src/client/menu/menu.o"
+	@echo "... src/client/menu/menu.i"
+	@echo "... src/client/menu/menu.s"
+	@echo "... src/client/menu/qmenu.o"
+	@echo "... src/client/menu/qmenu.i"
+	@echo "... src/client/menu/qmenu.s"
+	@echo "... src/client/menu/videomenu.o"
+	@echo "... src/client/menu/videomenu.i"
+	@echo "... src/client/menu/videomenu.s"
+	@echo "... src/client/refresh/files/models.o"
+	@echo "... src/client/refresh/files/models.i"
+	@echo "... src/client/refresh/files/models.s"
+	@echo "... src/client/refresh/files/pcx.o"
+	@echo "... src/client/refresh/files/pcx.i"
+	@echo "... src/client/refresh/files/pcx.s"
+	@echo "... src/client/refresh/files/pvs.o"
+	@echo "... src/client/refresh/files/pvs.i"
+	@echo "... src/client/refresh/files/pvs.s"
+	@echo "... src/client/refresh/files/stb.o"
+	@echo "... src/client/refresh/files/stb.i"
+	@echo "... src/client/refresh/files/stb.s"
+	@echo "... src/client/refresh/files/surf.o"
+	@echo "... src/client/refresh/files/surf.i"
+	@echo "... src/client/refresh/files/surf.s"
+	@echo "... src/client/refresh/files/wal.o"
+	@echo "... src/client/refresh/files/wal.i"
+	@echo "... src/client/refresh/files/wal.s"
+	@echo "... src/client/refresh/gl1/gl1_draw.o"
+	@echo "... src/client/refresh/gl1/gl1_draw.i"
+	@echo "... src/client/refresh/gl1/gl1_draw.s"
+	@echo "... src/client/refresh/gl1/gl1_image.o"
+	@echo "... src/client/refresh/gl1/gl1_image.i"
+	@echo "... src/client/refresh/gl1/gl1_image.s"
+	@echo "... src/client/refresh/gl1/gl1_light.o"
+	@echo "... src/client/refresh/gl1/gl1_light.i"
+	@echo "... src/client/refresh/gl1/gl1_light.s"
+	@echo "... src/client/refresh/gl1/gl1_lightmap.o"
+	@echo "... src/client/refresh/gl1/gl1_lightmap.i"
+	@echo "... src/client/refresh/gl1/gl1_lightmap.s"
+	@echo "... src/client/refresh/gl1/gl1_main.o"
+	@echo "... src/client/refresh/gl1/gl1_main.i"
+	@echo "... src/client/refresh/gl1/gl1_main.s"
+	@echo "... src/client/refresh/gl1/gl1_mesh.o"
+	@echo "... src/client/refresh/gl1/gl1_mesh.i"
+	@echo "... src/client/refresh/gl1/gl1_mesh.s"
+	@echo "... src/client/refresh/gl1/gl1_misc.o"
+	@echo "... src/client/refresh/gl1/gl1_misc.i"
+	@echo "... src/client/refresh/gl1/gl1_misc.s"
+	@echo "... src/client/refresh/gl1/gl1_model.o"
+	@echo "... src/client/refresh/gl1/gl1_model.i"
+	@echo "... src/client/refresh/gl1/gl1_model.s"
+	@echo "... src/client/refresh/gl1/gl1_scrap.o"
+	@echo "... src/client/refresh/gl1/gl1_scrap.i"
+	@echo "... src/client/refresh/gl1/gl1_scrap.s"
+	@echo "... src/client/refresh/gl1/gl1_sdl.o"
+	@echo "... src/client/refresh/gl1/gl1_sdl.i"
+	@echo "... src/client/refresh/gl1/gl1_sdl.s"
+	@echo "... src/client/refresh/gl1/gl1_surf.o"
+	@echo "... src/client/refresh/gl1/gl1_surf.i"
+	@echo "... src/client/refresh/gl1/gl1_surf.s"
+	@echo "... src/client/refresh/gl1/gl1_warp.o"
+	@echo "... src/client/refresh/gl1/gl1_warp.i"
+	@echo "... src/client/refresh/gl1/gl1_warp.s"
+	@echo "... src/client/refresh/gl1/qgl.o"
+	@echo "... src/client/refresh/gl1/qgl.i"
+	@echo "... src/client/refresh/gl1/qgl.s"
+	@echo "... src/client/refresh/gl3/gl3_draw.o"
+	@echo "... src/client/refresh/gl3/gl3_draw.i"
+	@echo "... src/client/refresh/gl3/gl3_draw.s"
+	@echo "... src/client/refresh/gl3/gl3_image.o"
+	@echo "... src/client/refresh/gl3/gl3_image.i"
+	@echo "... src/client/refresh/gl3/gl3_image.s"
+	@echo "... src/client/refresh/gl3/gl3_light.o"
+	@echo "... src/client/refresh/gl3/gl3_light.i"
+	@echo "... src/client/refresh/gl3/gl3_light.s"
+	@echo "... src/client/refresh/gl3/gl3_lightmap.o"
+	@echo "... src/client/refresh/gl3/gl3_lightmap.i"
+	@echo "... src/client/refresh/gl3/gl3_lightmap.s"
+	@echo "... src/client/refresh/gl3/gl3_main.o"
+	@echo "... src/client/refresh/gl3/gl3_main.i"
+	@echo "... src/client/refresh/gl3/gl3_main.s"
+	@echo "... src/client/refresh/gl3/gl3_mesh.o"
+	@echo "... src/client/refresh/gl3/gl3_mesh.i"
+	@echo "... src/client/refresh/gl3/gl3_mesh.s"
+	@echo "... src/client/refresh/gl3/gl3_misc.o"
+	@echo "... src/client/refresh/gl3/gl3_misc.i"
+	@echo "... src/client/refresh/gl3/gl3_misc.s"
+	@echo "... src/client/refresh/gl3/gl3_model.o"
+	@echo "... src/client/refresh/gl3/gl3_model.i"
+	@echo "... src/client/refresh/gl3/gl3_model.s"
+	@echo "... src/client/refresh/gl3/gl3_sdl.o"
+	@echo "... src/client/refresh/gl3/gl3_sdl.i"
+	@echo "... src/client/refresh/gl3/gl3_sdl.s"
+	@echo "... src/client/refresh/gl3/gl3_shaders.o"
+	@echo "... src/client/refresh/gl3/gl3_shaders.i"
+	@echo "... src/client/refresh/gl3/gl3_shaders.s"
+	@echo "... src/client/refresh/gl3/gl3_surf.o"
+	@echo "... src/client/refresh/gl3/gl3_surf.i"
+	@echo "... src/client/refresh/gl3/gl3_surf.s"
+	@echo "... src/client/refresh/gl3/gl3_warp.o"
+	@echo "... src/client/refresh/gl3/gl3_warp.i"
+	@echo "... src/client/refresh/gl3/gl3_warp.s"
+	@echo "... src/client/refresh/gl3/glad-gles3/src/glad.o"
+	@echo "... src/client/refresh/gl3/glad-gles3/src/glad.i"
+	@echo "... src/client/refresh/gl3/glad-gles3/src/glad.s"
+	@echo "... src/client/refresh/gl3/glad/src/glad.o"
+	@echo "... src/client/refresh/gl3/glad/src/glad.i"
+	@echo "... src/client/refresh/gl3/glad/src/glad.s"
+	@echo "... src/client/refresh/soft/sw_aclip.o"
+	@echo "... src/client/refresh/soft/sw_aclip.i"
+	@echo "... src/client/refresh/soft/sw_aclip.s"
+	@echo "... src/client/refresh/soft/sw_alias.o"
+	@echo "... src/client/refresh/soft/sw_alias.i"
+	@echo "... src/client/refresh/soft/sw_alias.s"
+	@echo "... src/client/refresh/soft/sw_bsp.o"
+	@echo "... src/client/refresh/soft/sw_bsp.i"
+	@echo "... src/client/refresh/soft/sw_bsp.s"
+	@echo "... src/client/refresh/soft/sw_draw.o"
+	@echo "... src/client/refresh/soft/sw_draw.i"
+	@echo "... src/client/refresh/soft/sw_draw.s"
+	@echo "... src/client/refresh/soft/sw_edge.o"
+	@echo "... src/client/refresh/soft/sw_edge.i"
+	@echo "... src/client/refresh/soft/sw_edge.s"
+	@echo "... src/client/refresh/soft/sw_image.o"
+	@echo "... src/client/refresh/soft/sw_image.i"
+	@echo "... src/client/refresh/soft/sw_image.s"
+	@echo "... src/client/refresh/soft/sw_light.o"
+	@echo "... src/client/refresh/soft/sw_light.i"
+	@echo "... src/client/refresh/soft/sw_light.s"
+	@echo "... src/client/refresh/soft/sw_main.o"
+	@echo "... src/client/refresh/soft/sw_main.i"
+	@echo "... src/client/refresh/soft/sw_main.s"
+	@echo "... src/client/refresh/soft/sw_misc.o"
+	@echo "... src/client/refresh/soft/sw_misc.i"
+	@echo "... src/client/refresh/soft/sw_misc.s"
+	@echo "... src/client/refresh/soft/sw_model.o"
+	@echo "... src/client/refresh/soft/sw_model.i"
+	@echo "... src/client/refresh/soft/sw_model.s"
+	@echo "... src/client/refresh/soft/sw_part.o"
+	@echo "... src/client/refresh/soft/sw_part.i"
+	@echo "... src/client/refresh/soft/sw_part.s"
+	@echo "... src/client/refresh/soft/sw_poly.o"
+	@echo "... src/client/refresh/soft/sw_poly.i"
+	@echo "... src/client/refresh/soft/sw_poly.s"
+	@echo "... src/client/refresh/soft/sw_polyset.o"
+	@echo "... src/client/refresh/soft/sw_polyset.i"
+	@echo "... src/client/refresh/soft/sw_polyset.s"
+	@echo "... src/client/refresh/soft/sw_rast.o"
+	@echo "... src/client/refresh/soft/sw_rast.i"
+	@echo "... src/client/refresh/soft/sw_rast.s"
+	@echo "... src/client/refresh/soft/sw_scan.o"
+	@echo "... src/client/refresh/soft/sw_scan.i"
+	@echo "... src/client/refresh/soft/sw_scan.s"
+	@echo "... src/client/refresh/soft/sw_sprite.o"
+	@echo "... src/client/refresh/soft/sw_sprite.i"
+	@echo "... src/client/refresh/soft/sw_sprite.s"
+	@echo "... src/client/refresh/soft/sw_surf.o"
+	@echo "... src/client/refresh/soft/sw_surf.i"
+	@echo "... src/client/refresh/soft/sw_surf.s"
+	@echo "... src/client/sound/ogg.o"
+	@echo "... src/client/sound/ogg.i"
+	@echo "... src/client/sound/ogg.s"
+	@echo "... src/client/sound/openal.o"
+	@echo "... src/client/sound/openal.i"
+	@echo "... src/client/sound/openal.s"
+	@echo "... src/client/sound/qal.o"
+	@echo "... src/client/sound/qal.i"
+	@echo "... src/client/sound/qal.s"
+	@echo "... src/client/sound/sdl.o"
+	@echo "... src/client/sound/sdl.i"
+	@echo "... src/client/sound/sdl.s"
+	@echo "... src/client/sound/sound.o"
+	@echo "... src/client/sound/sound.i"
+	@echo "... src/client/sound/sound.s"
+	@echo "... src/client/sound/wave.o"
+	@echo "... src/client/sound/wave.i"
+	@echo "... src/client/sound/wave.s"
+	@echo "... src/client/vid/glimp_sdl.o"
+	@echo "... src/client/vid/glimp_sdl.i"
+	@echo "... src/client/vid/glimp_sdl.s"
+	@echo "... src/client/vid/vid.o"
+	@echo "... src/client/vid/vid.i"
+	@echo "... src/client/vid/vid.s"
+	@echo "... src/common/argproc.o"
+	@echo "... src/common/argproc.i"
+	@echo "... src/common/argproc.s"
+	@echo "... src/common/clientserver.o"
+	@echo "... src/common/clientserver.i"
+	@echo "... src/common/clientserver.s"
+	@echo "... src/common/cmdparser.o"
+	@echo "... src/common/cmdparser.i"
+	@echo "... src/common/cmdparser.s"
+	@echo "... src/common/collision.o"
+	@echo "... src/common/collision.i"
+	@echo "... src/common/collision.s"
+	@echo "... src/common/crc.o"
+	@echo "... src/common/crc.i"
+	@echo "... src/common/crc.s"
+	@echo "... src/common/cvar.o"
+	@echo "... src/common/cvar.i"
+	@echo "... src/common/cvar.s"
+	@echo "... src/common/filesystem.o"
+	@echo "... src/common/filesystem.i"
+	@echo "... src/common/filesystem.s"
+	@echo "... src/common/frame.o"
+	@echo "... src/common/frame.i"
+	@echo "... src/common/frame.s"
+	@echo "... src/common/glob.o"
+	@echo "... src/common/glob.i"
+	@echo "... src/common/glob.s"
+	@echo "... src/common/md4.o"
+	@echo "... src/common/md4.i"
+	@echo "... src/common/md4.s"
+	@echo "... src/common/movemsg.o"
+	@echo "... src/common/movemsg.i"
+	@echo "... src/common/movemsg.s"
+	@echo "... src/common/netchan.o"
+	@echo "... src/common/netchan.i"
+	@echo "... src/common/netchan.s"
+	@echo "... src/common/pmove.o"
+	@echo "... src/common/pmove.i"
+	@echo "... src/common/pmove.s"
+	@echo "... src/common/shared/flash.o"
+	@echo "... src/common/shared/flash.i"
+	@echo "... src/common/shared/flash.s"
+	@echo "... src/common/shared/rand.o"
+	@echo "... src/common/shared/rand.i"
+	@echo "... src/common/shared/rand.s"
+	@echo "... src/common/shared/shared.o"
+	@echo "... src/common/shared/shared.i"
+	@echo "... src/common/shared/shared.s"
+	@echo "... src/common/szone.o"
+	@echo "... src/common/szone.i"
+	@echo "... src/common/szone.s"
+	@echo "... src/common/unzip/ioapi.o"
+	@echo "... src/common/unzip/ioapi.i"
+	@echo "... src/common/unzip/ioapi.s"
+	@echo "... src/common/unzip/miniz.o"
+	@echo "... src/common/unzip/miniz.i"
+	@echo "... src/common/unzip/miniz.s"
+	@echo "... src/common/unzip/unzip.o"
+	@echo "... src/common/unzip/unzip.i"
+	@echo "... src/common/unzip/unzip.s"
+	@echo "... src/common/zone.o"
+	@echo "... src/common/zone.i"
+	@echo "... src/common/zone.s"
+	@echo "... src/game/g_ai.o"
+	@echo "... src/game/g_ai.i"
+	@echo "... src/game/g_ai.s"
+	@echo "... src/game/g_chase.o"
+	@echo "... src/game/g_chase.i"
+	@echo "... src/game/g_chase.s"
+	@echo "... src/game/g_cmds.o"
+	@echo "... src/game/g_cmds.i"
+	@echo "... src/game/g_cmds.s"
+	@echo "... src/game/g_combat.o"
+	@echo "... src/game/g_combat.i"
+	@echo "... src/game/g_combat.s"
+	@echo "... src/game/g_func.o"
+	@echo "... src/game/g_func.i"
+	@echo "... src/game/g_func.s"
+	@echo "... src/game/g_items.o"
+	@echo "... src/game/g_items.i"
+	@echo "... src/game/g_items.s"
+	@echo "... src/game/g_main.o"
+	@echo "... src/game/g_main.i"
+	@echo "... src/game/g_main.s"
+	@echo "... src/game/g_misc.o"
+	@echo "... src/game/g_misc.i"
+	@echo "... src/game/g_misc.s"
+	@echo "... src/game/g_monster.o"
+	@echo "... src/game/g_monster.i"
+	@echo "... src/game/g_monster.s"
+	@echo "... src/game/g_phys.o"
+	@echo "... src/game/g_phys.i"
+	@echo "... src/game/g_phys.s"
+	@echo "... src/game/g_spawn.o"
+	@echo "... src/game/g_spawn.i"
+	@echo "... src/game/g_spawn.s"
+	@echo "... src/game/g_svcmds.o"
+	@echo "... src/game/g_svcmds.i"
+	@echo "... src/game/g_svcmds.s"
+	@echo "... src/game/g_target.o"
+	@echo "... src/game/g_target.i"
+	@echo "... src/game/g_target.s"
+	@echo "... src/game/g_trigger.o"
+	@echo "... src/game/g_trigger.i"
+	@echo "... src/game/g_trigger.s"
+	@echo "... src/game/g_turret.o"
+	@echo "... src/game/g_turret.i"
+	@echo "... src/game/g_turret.s"
+	@echo "... src/game/g_utils.o"
+	@echo "... src/game/g_utils.i"
+	@echo "... src/game/g_utils.s"
+	@echo "... src/game/g_weapon.o"
+	@echo "... src/game/g_weapon.i"
+	@echo "... src/game/g_weapon.s"
+	@echo "... src/game/monster/berserker/berserker.o"
+	@echo "... src/game/monster/berserker/berserker.i"
+	@echo "... src/game/monster/berserker/berserker.s"
+	@echo "... src/game/monster/boss2/boss2.o"
+	@echo "... src/game/monster/boss2/boss2.i"
+	@echo "... src/game/monster/boss2/boss2.s"
+	@echo "... src/game/monster/boss3/boss3.o"
+	@echo "... src/game/monster/boss3/boss3.i"
+	@echo "... src/game/monster/boss3/boss3.s"
+	@echo "... src/game/monster/boss3/boss31.o"
+	@echo "... src/game/monster/boss3/boss31.i"
+	@echo "... src/game/monster/boss3/boss31.s"
+	@echo "... src/game/monster/boss3/boss32.o"
+	@echo "... src/game/monster/boss3/boss32.i"
+	@echo "... src/game/monster/boss3/boss32.s"
+	@echo "... src/game/monster/brain/brain.o"
+	@echo "... src/game/monster/brain/brain.i"
+	@echo "... src/game/monster/brain/brain.s"
+	@echo "... src/game/monster/chick/chick.o"
+	@echo "... src/game/monster/chick/chick.i"
+	@echo "... src/game/monster/chick/chick.s"
+	@echo "... src/game/monster/flipper/flipper.o"
+	@echo "... src/game/monster/flipper/flipper.i"
+	@echo "... src/game/monster/flipper/flipper.s"
+	@echo "... src/game/monster/float/float.o"
+	@echo "... src/game/monster/float/float.i"
+	@echo "... src/game/monster/float/float.s"
+	@echo "... src/game/monster/flyer/flyer.o"
+	@echo "... src/game/monster/flyer/flyer.i"
+	@echo "... src/game/monster/flyer/flyer.s"
+	@echo "... src/game/monster/gladiator/gladiator.o"
+	@echo "... src/game/monster/gladiator/gladiator.i"
+	@echo "... src/game/monster/gladiator/gladiator.s"
+	@echo "... src/game/monster/gunner/gunner.o"
+	@echo "... src/game/monster/gunner/gunner.i"
+	@echo "... src/game/monster/gunner/gunner.s"
+	@echo "... src/game/monster/hover/hover.o"
+	@echo "... src/game/monster/hover/hover.i"
+	@echo "... src/game/monster/hover/hover.s"
+	@echo "... src/game/monster/infantry/infantry.o"
+	@echo "... src/game/monster/infantry/infantry.i"
+	@echo "... src/game/monster/infantry/infantry.s"
+	@echo "... src/game/monster/insane/insane.o"
+	@echo "... src/game/monster/insane/insane.i"
+	@echo "... src/game/monster/insane/insane.s"
+	@echo "... src/game/monster/medic/medic.o"
+	@echo "... src/game/monster/medic/medic.i"
+	@echo "... src/game/monster/medic/medic.s"
+	@echo "... src/game/monster/misc/move.o"
+	@echo "... src/game/monster/misc/move.i"
+	@echo "... src/game/monster/misc/move.s"
+	@echo "... src/game/monster/mutant/mutant.o"
+	@echo "... src/game/monster/mutant/mutant.i"
+	@echo "... src/game/monster/mutant/mutant.s"
+	@echo "... src/game/monster/parasite/parasite.o"
+	@echo "... src/game/monster/parasite/parasite.i"
+	@echo "... src/game/monster/parasite/parasite.s"
+	@echo "... src/game/monster/soldier/soldier.o"
+	@echo "... src/game/monster/soldier/soldier.i"
+	@echo "... src/game/monster/soldier/soldier.s"
+	@echo "... src/game/monster/supertank/supertank.o"
+	@echo "... src/game/monster/supertank/supertank.i"
+	@echo "... src/game/monster/supertank/supertank.s"
+	@echo "... src/game/monster/tank/tank.o"
+	@echo "... src/game/monster/tank/tank.i"
+	@echo "... src/game/monster/tank/tank.s"
+	@echo "... src/game/player/client.o"
+	@echo "... src/game/player/client.i"
+	@echo "... src/game/player/client.s"
+	@echo "... src/game/player/hud.o"
+	@echo "... src/game/player/hud.i"
+	@echo "... src/game/player/hud.s"
+	@echo "... src/game/player/trail.o"
+	@echo "... src/game/player/trail.i"
+	@echo "... src/game/player/trail.s"
+	@echo "... src/game/player/view.o"
+	@echo "... src/game/player/view.i"
+	@echo "... src/game/player/view.s"
+	@echo "... src/game/player/weapon.o"
+	@echo "... src/game/player/weapon.i"
+	@echo "... src/game/player/weapon.s"
+	@echo "... src/game/savegame/savegame.o"
+	@echo "... src/game/savegame/savegame.i"
+	@echo "... src/game/savegame/savegame.s"
+	@echo "... src/server/sv_cmd.o"
+	@echo "... src/server/sv_cmd.i"
+	@echo "... src/server/sv_cmd.s"
+	@echo "... src/server/sv_conless.o"
+	@echo "... src/server/sv_conless.i"
+	@echo "... src/server/sv_conless.s"
+	@echo "... src/server/sv_entities.o"
+	@echo "... src/server/sv_entities.i"
+	@echo "... src/server/sv_entities.s"
+	@echo "... src/server/sv_game.o"
+	@echo "... src/server/sv_game.i"
+	@echo "... src/server/sv_game.s"
+	@echo "... src/server/sv_init.o"
+	@echo "... src/server/sv_init.i"
+	@echo "... src/server/sv_init.s"
+	@echo "... src/server/sv_main.o"
+	@echo "... src/server/sv_main.i"
+	@echo "... src/server/sv_main.s"
+	@echo "... src/server/sv_save.o"
+	@echo "... src/server/sv_save.i"
+	@echo "... src/server/sv_save.s"
+	@echo "... src/server/sv_send.o"
+	@echo "... src/server/sv_send.i"
+	@echo "... src/server/sv_send.s"
+	@echo "... src/server/sv_user.o"
+	@echo "... src/server/sv_user.i"
+	@echo "... src/server/sv_user.s"
+	@echo "... src/server/sv_world.o"
+	@echo "... src/server/sv_world.i"
+	@echo "... src/server/sv_world.s"
+.PHONY : help
+
+
+
+#=============================================================================
+# Special targets to cleanup operation of make.
+
+# Special rule to run CMake to check the build system integrity.
+# No rule that depends on this can have commands that come from listfiles
+# because they might be regenerated.
+cmake_check_build_system:
+	$(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
+.PHONY : cmake_check_build_system
 
-ifeq ($(YQ2_OSTYPE), FreeBSD)
-release/quake2 : CFLAGS += -DHAVE_EXECINFO
-release/quake2 : LDLIBS += -lexecinfo
-endif
-
-ifeq ($(YQ2_OSTYPE), NetBSD)
-release/quake2 : CFLAGS += -DHAVE_EXECINFO
-release/quake2 : LDLIBS += -lexecinfo
-endif
-
-ifeq ($(YQ2_OSTYPE), OpenBSD)
-release/quake2 : CFLAGS += -DHAVE_EXECINFO
-release/quake2 : LDLIBS += -lexecinfo
-endif
-
-ifeq ($(YQ2_OSTYPE), Haiku)
-release/quake2 : CFLAGS += -DHAVE_EXECINFO
-release/quake2 : LDLIBS += -lexecinfo
-endif
-
-ifeq ($(WITH_RPATH),yes)
-ifeq ($(YQ2_OSTYPE), Darwin)
-release/quake2 : LDFLAGS += -Wl,-rpath,'@executable_path/lib'
-else
-release/quake2 : LDFLAGS += -Wl,-z,origin,-rpath='$$ORIGIN/lib'
-endif
-endif
-endif
-
-# ----------
-
-# The server
-ifeq ($(YQ2_OSTYPE), Windows)
-server:
-	@echo "===> Building q2ded"
-	${Q}mkdir -p release
-	$(MAKE) release/q2ded.exe
-
-build/server/%.o: %.c
-	@echo "===> CC $<"
-	${Q}mkdir -p $(@D)
-	${Q}$(CC) -c $(CFLAGS) $(ZIPCFLAGS) $(INCLUDE) -o $@ $<
-
-release/q2ded.exe : CFLAGS += -DDEDICATED_ONLY
-
-else # not Windows
-
-server:
-	@echo "===> Building q2ded"
-	${Q}mkdir -p release
-	$(MAKE) release/q2ded
-
-build/server/%.o: %.c
-	@echo "===> CC $<"
-	${Q}mkdir -p $(@D)
-	${Q}$(CC) -c $(CFLAGS) $(ZIPCFLAGS) $(INCLUDE) -o $@ $<
-
-release/q2ded : CFLAGS += -DDEDICATED_ONLY -Wno-unused-result
-
-ifeq ($(YQ2_OSTYPE), FreeBSD)
-release/q2ded : LDLIBS += -lexecinfo
-endif
-endif
-
-# ----------
-
-# The OpenGL 1.x renderer lib
-
-ifeq ($(YQ2_OSTYPE), Windows)
-
-ref_gl1:
-	@echo "===> Building ref_gl1.dll"
-	$(MAKE) release/ref_gl1.dll
-
-release/ref_gl1.dll : LDFLAGS += -shared
-release/ref_gl1.dll : LDLIBS += -lopengl32
-
-else ifeq ($(YQ2_OSTYPE), Darwin)
-
-ref_gl1:
-	@echo "===> Building ref_gl1.dylib"
-	$(MAKE) release/ref_gl1.dylib
-
-
-release/ref_gl1.dylib : LDFLAGS += -shared -framework OpenGL
-
-else # not Windows or Darwin
-
-ref_gl1:
-	@echo "===> Building ref_gl1.so"
-	$(MAKE) release/ref_gl1.so
-
-
-release/ref_gl1.so : CFLAGS += -fPIC
-release/ref_gl1.so : LDFLAGS += -shared
-release/ref_gl1.so : LDLIBS += -lGL
-
-endif # OS specific ref_gl1 stuff
-
-build/ref_gl1/%.o: %.c
-	@echo "===> CC $<"
-	${Q}mkdir -p $(@D)
-	${Q}$(CC) -c $(CFLAGS) $(SDLCFLAGS) $(INCLUDE) -o $@ $<
-
-# ----------
-
-# The OpenGL 3.x renderer lib
-
-ifeq ($(YQ2_OSTYPE), Windows)
-
-ref_gl3:
-	@echo "===> Building ref_gl3.dll"
-	$(MAKE) release/ref_gl3.dll
-
-release/ref_gl3.dll : GLAD_INCLUDE = -Isrc/client/refresh/gl3/glad/include
-release/ref_gl3.dll : LDFLAGS += -shared
-
-else ifeq ($(YQ2_OSTYPE), Darwin)
-
-ref_gl3:
-	@echo "===> Building ref_gl3.dylib"
-	$(MAKE) release/ref_gl3.dylib
-
-release/ref_gl3.dylib : GLAD_INCLUDE = -Isrc/client/refresh/gl3/glad/include
-release/ref_gl3.dylib : LDFLAGS += -shared
-
-else # not Windows or Darwin
-
-ref_gl3:
-	@echo "===> Building ref_gl3.so"
-	$(MAKE) release/ref_gl3.so
-
-release/ref_gl3.so : GLAD_INCLUDE = -Isrc/client/refresh/gl3/glad/include
-release/ref_gl3.so : CFLAGS += -fPIC
-release/ref_gl3.so : LDFLAGS += -shared
-
-endif # OS specific ref_gl3 stuff
-
-build/ref_gl3/%.o: %.c
-	@echo "===> CC $<"
-	${Q}mkdir -p $(@D)
-	${Q}$(CC) -c $(CFLAGS) $(SDLCFLAGS) $(INCLUDE) $(GLAD_INCLUDE) -o $@ $<
-
-# ----------
-
-# The OpenGL ES 3.0 renderer lib
-
-ifeq ($(YQ2_OSTYPE), Windows)
-
-ref_gles3:
-	@echo "===> Building ref_gles3.dll"
-	$(MAKE) release/ref_gles3.dll
-
-release/ref_gles3.dll : GLAD_INCLUDE = -Isrc/client/refresh/gl3/glad-gles3/include
-
-# YQ2_GL3_GLES3 is for GLES3, DYQ2_GL3_GLES is for things that are identical
-# in both GLES3 and GLES2 (in case we ever support that)
-release/ref_gles3.dll : CFLAGS += -DYQ2_GL3_GLES3 -DYQ2_GL3_GLES
-
-release/ref_gles3.dll : LDFLAGS += -shared
-
-else ifeq ($(YQ2_OSTYPE), Darwin)
-
-ref_gles3:
-	@echo "===> Building ref_gles3.dylib"
-	$(MAKE) release/ref_gles3.dylib
-
-release/ref_gles3.dylib : GLAD_INCLUDE = -Isrc/client/refresh/gl3/glad-gles3/include
-
-# YQ2_GL3_GLES3 is for GLES3, DYQ2_GL3_GLES is for things that are identical
-# in both GLES3 and GLES2 (in case we ever support that)
-release/ref_gles3.dylib : CFLAGS += -DYQ2_GL3_GLES3 -DYQ2_GL3_GLES
-
-release/ref_gles3.dylib : LDFLAGS += -shared
-
-else # not Windows or Darwin
-
-ref_gles3:
-	@echo "===> Building ref_gles3.so"
-	$(MAKE) release/ref_gles3.so
-
-release/ref_gles3.so : GLAD_INCLUDE = -Isrc/client/refresh/gl3/glad-gles3/include
-
-# YQ2_GL3_GLES3 is for GLES3, DYQ2_GL3_GLES is for things that are identical
-# in both GLES3 and GLES2 (in case we ever support that)
-release/ref_gles3.so : CFLAGS += -DYQ2_GL3_GLES3 -DYQ2_GL3_GLES -fPIC
-
-release/ref_gles3.so : LDFLAGS += -shared
-
-GLAD_INCLUDE = -Isrc/client/refresh/gl3/glad-gles3/include
-
-endif # OS specific ref_gl3 stuff
-
-build/ref_gles3/%.o: %.c
-	@echo "===> CC $<"
-	${Q}mkdir -p $(@D)
-	${Q}$(CC) -c $(CFLAGS) $(SDLCFLAGS) $(INCLUDE) $(GLAD_INCLUDE) -o $@ $<
-
-# ----------
-
-# The soft renderer lib
-
-ifeq ($(YQ2_OSTYPE), Windows)
-
-ref_soft:
-	@echo "===> Building ref_soft.dll"
-	$(MAKE) release/ref_soft.dll
-
-release/ref_soft.dll : LDFLAGS += -shared
-
-else ifeq ($(YQ2_OSTYPE), Darwin)
-
-ref_soft:
-	@echo "===> Building ref_soft.dylib"
-	$(MAKE) release/ref_soft.dylib
-
-release/ref_soft.dylib : LDFLAGS += -shared
-
-else # not Windows or Darwin
-
-ref_soft:
-	@echo "===> Building ref_soft.so"
-	$(MAKE) release/ref_soft.so
-
-release/ref_soft.so : CFLAGS += -fPIC
-release/ref_soft.so : LDFLAGS += -shared
-
-endif # OS specific ref_soft stuff
-
-build/ref_soft/%.o: %.c
-	@echo "===> CC $<"
-	${Q}mkdir -p $(@D)
-	${Q}$(CC) -c $(CFLAGS) $(SDLCFLAGS) $(INCLUDE) -o $@ $<
-
-# ----------
-
-# The baseq2 game
-ifeq ($(YQ2_OSTYPE), Windows)
-game:
-	@echo "===> Building baseq2/game.dll"
-	${Q}mkdir -p release/baseq2
-	$(MAKE) release/baseq2/game.dll
-
-build/baseq2/%.o: %.c
-	@echo "===> CC $<"
-	${Q}mkdir -p $(@D)
-	${Q}$(CC) -c $(CFLAGS) $(INCLUDE) -o $@ $<
-
-release/baseq2/game.dll : LDFLAGS += -shared
-
-else ifeq ($(YQ2_OSTYPE), Darwin)
-
-game:
-	@echo "===> Building baseq2/game.dylib"
-	${Q}mkdir -p release/baseq2
-	$(MAKE) release/baseq2/game.dylib
-
-build/baseq2/%.o: %.c
-	@echo "===> CC $<"
-	${Q}mkdir -p $(@D)
-	${Q}$(CC) -c $(CFLAGS) $(INCLUDE) -o $@ $<
-
-release/baseq2/game.dylib : CFLAGS += -fPIC
-release/baseq2/game.dylib : LDFLAGS += -shared
-
-else # not Windows or Darwin
-
-game:
-	@echo "===> Building baseq2/game.so"
-	${Q}mkdir -p release/baseq2
-	$(MAKE) release/baseq2/game.so
-
-build/baseq2/%.o: %.c
-	@echo "===> CC $<"
-	${Q}mkdir -p $(@D)
-	${Q}$(CC) -c $(CFLAGS) $(INCLUDE) -o $@ $<
-
-release/baseq2/game.so : CFLAGS += -fPIC -Wno-unused-result
-release/baseq2/game.so : LDFLAGS += -shared
-endif
-
-# ----------
-
-# Used by the game
-GAME_OBJS_ = \
-	src/common/shared/flash.o \
-	src/common/shared/rand.o \
-	src/common/shared/shared.o \
-	src/game/g_ai.o \
-	src/game/g_chase.o \
-	src/game/g_cmds.o \
-	src/game/g_combat.o \
-	src/game/g_func.o \
-	src/game/g_items.o \
-	src/game/g_main.o \
-	src/game/g_misc.o \
-	src/game/g_monster.o \
-	src/game/g_phys.o \
-	src/game/g_spawn.o \
-	src/game/g_svcmds.o \
-	src/game/g_target.o \
-	src/game/g_trigger.o \
-	src/game/g_turret.o \
-	src/game/g_utils.o \
-	src/game/g_weapon.o \
-	src/game/monster/berserker/berserker.o \
-	src/game/monster/boss2/boss2.o \
-	src/game/monster/boss3/boss3.o \
-	src/game/monster/boss3/boss31.o \
-	src/game/monster/boss3/boss32.o \
-	src/game/monster/brain/brain.o \
-	src/game/monster/chick/chick.o \
-	src/game/monster/flipper/flipper.o \
-	src/game/monster/float/float.o \
-	src/game/monster/flyer/flyer.o \
-	src/game/monster/gladiator/gladiator.o \
-	src/game/monster/gunner/gunner.o \
-	src/game/monster/hover/hover.o \
-	src/game/monster/infantry/infantry.o \
-	src/game/monster/insane/insane.o \
-	src/game/monster/medic/medic.o \
-	src/game/monster/misc/move.o \
-	src/game/monster/mutant/mutant.o \
-	src/game/monster/parasite/parasite.o \
-	src/game/monster/soldier/soldier.o \
-	src/game/monster/supertank/supertank.o \
-	src/game/monster/tank/tank.o \
-	src/game/player/client.o \
-	src/game/player/hud.o \
-	src/game/player/trail.o \
-	src/game/player/view.o \
-	src/game/player/weapon.o \
-	src/game/savegame/savegame.o
-
-# ----------
-
-# Used by the client
-CLIENT_OBJS_ := \
-	src/backends/generic/misc.o \
-	src/client/cl_cin.o \
-	src/client/cl_console.o \
-	src/client/cl_download.o \
-	src/client/cl_effects.o \
-	src/client/cl_entities.o \
-	src/client/cl_input.o \
-	src/client/cl_inventory.o \
-	src/client/cl_keyboard.o \
-	src/client/cl_lights.o \
-	src/client/cl_main.o \
-	src/client/cl_network.o \
-	src/client/cl_parse.o \
-	src/client/cl_particles.o \
-	src/client/cl_prediction.o \
-	src/client/cl_screen.o \
-	src/client/cl_tempentities.o \
-	src/client/cl_view.o \
-	src/client/curl/download.o \
-	src/client/curl/qcurl.o \
-	src/client/input/sdl.o \
-	src/client/menu/menu.o \
-	src/client/menu/qmenu.o \
-	src/client/menu/videomenu.o \
-	src/client/sound/sdl.o \
-	src/client/sound/ogg.o \
-	src/client/sound/openal.o \
-	src/client/sound/qal.o \
-	src/client/sound/sound.o \
-	src/client/sound/wave.o \
-	src/client/vid/glimp_sdl.o \
-	src/client/vid/vid.o \
-	src/common/argproc.o \
-	src/common/clientserver.o \
-	src/common/collision.o \
-	src/common/crc.o \
-	src/common/cmdparser.o \
-	src/common/cvar.o \
-	src/common/filesystem.o \
-	src/common/glob.o \
-	src/common/md4.o \
-	src/common/movemsg.o \
-	src/common/frame.o \
-	src/common/netchan.o \
-	src/common/pmove.o \
-	src/common/szone.o \
-	src/common/zone.o \
-	src/common/shared/flash.o \
-	src/common/shared/rand.o \
-	src/common/shared/shared.o \
-	src/common/unzip/ioapi.o \
-	src/common/unzip/miniz.o \
-	src/common/unzip/unzip.o \
-	src/server/sv_cmd.o \
-	src/server/sv_conless.o \
-	src/server/sv_entities.o \
-	src/server/sv_game.o \
-	src/server/sv_init.o \
-	src/server/sv_main.o \
-	src/server/sv_save.o \
-	src/server/sv_send.o \
-	src/server/sv_user.o \
-	src/server/sv_world.o
-
-ifeq ($(YQ2_OSTYPE), Windows)
-CLIENT_OBJS_ += \
-	src/backends/windows/main.o \
-	src/backends/windows/network.o \
-	src/backends/windows/system.o \
-	src/backends/windows/shared/hunk.o
-else
-CLIENT_OBJS_ += \
-	src/backends/unix/main.o \
-	src/backends/unix/network.o \
-	src/backends/unix/signalhandler.o \
-	src/backends/unix/system.o \
-	src/backends/unix/shared/hunk.o
-endif
-
-# ----------
-
-REFGL1_OBJS_ := \
-	src/client/refresh/gl1/qgl.o \
-	src/client/refresh/gl1/gl1_draw.o \
-	src/client/refresh/gl1/gl1_image.o \
-	src/client/refresh/gl1/gl1_light.o \
-	src/client/refresh/gl1/gl1_lightmap.o \
-	src/client/refresh/gl1/gl1_main.o \
-	src/client/refresh/gl1/gl1_mesh.o \
-	src/client/refresh/gl1/gl1_misc.o \
-	src/client/refresh/gl1/gl1_model.o \
-	src/client/refresh/gl1/gl1_scrap.o \
-	src/client/refresh/gl1/gl1_surf.o \
-	src/client/refresh/gl1/gl1_warp.o \
-	src/client/refresh/gl1/gl1_sdl.o \
-	src/client/refresh/files/surf.o \
-	src/client/refresh/files/models.o \
-	src/client/refresh/files/pcx.o \
-	src/client/refresh/files/stb.o \
-	src/client/refresh/files/wal.o \
-	src/client/refresh/files/pvs.o \
-	src/common/shared/shared.o \
-	src/common/md4.o
-
-ifeq ($(YQ2_OSTYPE), Windows)
-REFGL1_OBJS_ += \
-	src/backends/windows/shared/hunk.o
-else # not Windows
-REFGL1_OBJS_ += \
-	src/backends/unix/shared/hunk.o
-endif
-
-# ----------
-
-REFGL3_OBJS_ := \
-	src/client/refresh/gl3/gl3_draw.o \
-	src/client/refresh/gl3/gl3_image.o \
-	src/client/refresh/gl3/gl3_light.o \
-	src/client/refresh/gl3/gl3_lightmap.o \
-	src/client/refresh/gl3/gl3_main.o \
-	src/client/refresh/gl3/gl3_mesh.o \
-	src/client/refresh/gl3/gl3_misc.o \
-	src/client/refresh/gl3/gl3_model.o \
-	src/client/refresh/gl3/gl3_sdl.o \
-	src/client/refresh/gl3/gl3_surf.o \
-	src/client/refresh/gl3/gl3_warp.o \
-	src/client/refresh/gl3/gl3_shaders.o \
-	src/client/refresh/files/surf.o \
-	src/client/refresh/files/models.o \
-	src/client/refresh/files/pcx.o \
-	src/client/refresh/files/stb.o \
-	src/client/refresh/files/wal.o \
-	src/client/refresh/files/pvs.o \
-	src/common/shared/shared.o \
-	src/common/md4.o
-
-REFGL3_OBJS_GLADE_ := \
-	src/client/refresh/gl3/glad/src/glad.o
-
-REFGL3_OBJS_GLADEES_ := \
-	src/client/refresh/gl3/glad-gles3/src/glad.o
-
-ifeq ($(YQ2_OSTYPE), Windows)
-REFGL3_OBJS_ += \
-	src/backends/windows/shared/hunk.o
-else # not Windows
-REFGL3_OBJS_ += \
-	src/backends/unix/shared/hunk.o
-endif
-
-# ----------
-
-REFSOFT_OBJS_ := \
-	src/client/refresh/soft/sw_aclip.o \
-	src/client/refresh/soft/sw_alias.o \
-	src/client/refresh/soft/sw_bsp.o \
-	src/client/refresh/soft/sw_draw.o \
-	src/client/refresh/soft/sw_edge.o \
-	src/client/refresh/soft/sw_image.o \
-	src/client/refresh/soft/sw_light.o \
-	src/client/refresh/soft/sw_main.o \
-	src/client/refresh/soft/sw_misc.o \
-	src/client/refresh/soft/sw_model.o \
-	src/client/refresh/soft/sw_part.o \
-	src/client/refresh/soft/sw_poly.o \
-	src/client/refresh/soft/sw_polyset.o \
-	src/client/refresh/soft/sw_rast.o \
-	src/client/refresh/soft/sw_scan.o \
-	src/client/refresh/soft/sw_sprite.o \
-	src/client/refresh/soft/sw_surf.o \
-	src/client/refresh/files/surf.o \
-	src/client/refresh/files/models.o \
-	src/client/refresh/files/pcx.o \
-	src/client/refresh/files/stb.o \
-	src/client/refresh/files/wal.o \
-	src/client/refresh/files/pvs.o \
-	src/common/shared/shared.o \
-	src/common/md4.o
-
-ifeq ($(YQ2_OSTYPE), Windows)
-REFSOFT_OBJS_ += \
-	src/backends/windows/shared/hunk.o
-else # not Windows
-REFSOFT_OBJS_ += \
-	src/backends/unix/shared/hunk.o
-endif
-
-# ----------
-
-# Used by the server
-SERVER_OBJS_ := \
-	src/backends/generic/misc.o \
-	src/common/argproc.o \
-	src/common/clientserver.o \
-	src/common/collision.o \
-	src/common/crc.o \
-	src/common/cmdparser.o \
-	src/common/cvar.o \
-	src/common/filesystem.o \
-	src/common/glob.o \
-	src/common/md4.o \
-	src/common/frame.o \
-	src/common/movemsg.o \
-	src/common/netchan.o \
-	src/common/pmove.o \
-	src/common/szone.o \
-	src/common/zone.o \
-	src/common/shared/rand.o \
-	src/common/shared/shared.o \
-	src/common/unzip/ioapi.o \
-	src/common/unzip/miniz.o \
-	src/common/unzip/unzip.o \
-	src/server/sv_cmd.o \
-	src/server/sv_conless.o \
-	src/server/sv_entities.o \
-	src/server/sv_game.o \
-	src/server/sv_init.o \
-	src/server/sv_main.o \
-	src/server/sv_save.o \
-	src/server/sv_send.o \
-	src/server/sv_user.o \
-	src/server/sv_world.o
-
-ifeq ($(YQ2_OSTYPE), Windows)
-SERVER_OBJS_ += \
-	src/backends/windows/main.o \
-	src/backends/windows/network.o \
-	src/backends/windows/system.o \
-	src/backends/windows/shared/hunk.o
-else # not Windows
-SERVER_OBJS_ += \
-	src/backends/unix/main.o \
-	src/backends/unix/network.o \
-	src/backends/unix/signalhandler.o \
-	src/backends/unix/system.o \
-	src/backends/unix/shared/hunk.o
-endif
-
-# ----------
-
-# Rewrite paths to our object directory.
-CLIENT_OBJS = $(patsubst %,build/client/%,$(CLIENT_OBJS_))
-REFGL1_OBJS = $(patsubst %,build/ref_gl1/%,$(REFGL1_OBJS_))
-REFGL3_OBJS = $(patsubst %,build/ref_gl3/%,$(REFGL3_OBJS_))
-REFGL3_OBJS += $(patsubst %,build/ref_gl3/%,$(REFGL3_OBJS_GLADE_))
-REFGLES3_OBJS = $(patsubst %,build/ref_gles3/%,$(REFGL3_OBJS_))
-REFGLES3_OBJS += $(patsubst %,build/ref_gles3/%,$(REFGL3_OBJS_GLADEES_))
-REFSOFT_OBJS = $(patsubst %,build/ref_soft/%,$(REFSOFT_OBJS_))
-SERVER_OBJS = $(patsubst %,build/server/%,$(SERVER_OBJS_))
-GAME_OBJS = $(patsubst %,build/baseq2/%,$(GAME_OBJS_))
-
-# ----------
-
-# Generate header dependencies.
-CLIENT_DEPS= $(CLIENT_OBJS:.o=.d)
-GAME_DEPS= $(GAME_OBJS:.o=.d)
-REFGL1_DEPS= $(REFGL1_OBJS:.o=.d)
-REFGL3_DEPS= $(REFGL3_OBJS:.o=.d)
-REFGLES3_DEPS= $(REFGLES3_OBJS:.o=.d)
-REFSOFT_DEPS= $(REFSOFT_OBJS:.o=.d)
-SERVER_DEPS= $(SERVER_OBJS:.o=.d)
-
-# Suck header dependencies in.
--include $(CLIENT_DEPS)
--include $(GAME_DEPS)
--include $(REFGL1_DEPS)
--include $(REFGL3_DEPS)
--include $(REFGLES3_DEPS)
--include $(SERVER_DEPS)
-
-# ----------
-
-# release/quake2
-ifeq ($(YQ2_OSTYPE), Windows)
-release/yquake2.exe : $(CLIENT_OBJS) icon
-	@echo "===> LD $@"
-	${Q}$(CC) $(LDFLAGS) build/icon/icon.res $(CLIENT_OBJS) $(LDLIBS) $(SDLLDFLAGS) -o $@
-	$(Q)strip $@
-release/quake2.exe : src/win-wrapper/wrapper.c icon
-	$(Q)$(CC) -Wall -mwindows build/icon/icon.res src/win-wrapper/wrapper.c -o $@
-	$(Q)strip $@
-else
-release/quake2 : $(CLIENT_OBJS)
-	@echo "===> LD $@"
-	${Q}$(CC) $(LDFLAGS) $(CLIENT_OBJS) $(LDLIBS) $(SDLLDFLAGS) -o $@
-endif
-
-# release/q2ded
-ifeq ($(YQ2_OSTYPE), Windows)
-release/q2ded.exe : $(SERVER_OBJS) icon
-	@echo "===> LD $@"
-	${Q}$(CC) $(LDFLAGS) build/icon/icon.res $(SERVER_OBJS) $(LDLIBS) $(SDLLDFLAGS) -o $@
-	$(Q)strip $@
-else
-release/q2ded : $(SERVER_OBJS)
-	@echo "===> LD $@"
-	${Q}$(CC) $(LDFLAGS) $(SERVER_OBJS) $(LDLIBS) -o $@
-endif
-
-# release/ref_gl1.so
-ifeq ($(YQ2_OSTYPE), Windows)
-release/ref_gl1.dll : $(REFGL1_OBJS)
-	@echo "===> LD $@"
-	${Q}$(CC) $(LDFLAGS) $(REFGL1_OBJS) $(LDLIBS) $(DLL_SDLLDFLAGS) -o $@
-	$(Q)strip $@
-else ifeq ($(YQ2_OSTYPE), Darwin)
-release/ref_gl1.dylib : $(REFGL1_OBJS)
-	@echo "===> LD $@"
-	${Q}$(CC) $(LDFLAGS) $(REFGL1_OBJS) $(LDLIBS) $(SDLLDFLAGS) -o $@
-else
-release/ref_gl1.so : $(REFGL1_OBJS)
-	@echo "===> LD $@"
-	${Q}$(CC) $(LDFLAGS) $(REFGL1_OBJS) $(LDLIBS) $(SDLLDFLAGS) -o $@
-endif
-
-# release/ref_gl3.so
-ifeq ($(YQ2_OSTYPE), Windows)
-release/ref_gl3.dll : $(REFGL3_OBJS)
-	@echo "===> LD $@"
-	${Q}$(CC) $(LDFLAGS) $(REFGL3_OBJS) $(LDLIBS) $(DLL_SDLLDFLAGS) -o $@
-	$(Q)strip $@
-else ifeq ($(YQ2_OSTYPE), Darwin)
-release/ref_gl3.dylib : $(REFGL3_OBJS)
-	@echo "===> LD $@"
-	${Q}$(CC) $(LDFLAGS) $(REFGL3_OBJS) $(LDLIBS) $(SDLLDFLAGS) -o $@
-else
-release/ref_gl3.so : $(REFGL3_OBJS)
-	@echo "===> LD $@"
-	${Q}$(CC) $(LDFLAGS) $(REFGL3_OBJS) $(LDLIBS) $(SDLLDFLAGS) -o $@
-endif
-
-# release/ref_gles3.so
-ifeq ($(YQ2_OSTYPE), Windows)
-release/ref_gles3.dll : $(REFGLES3_OBJS)
-	@echo "===> LD $@"
-	${Q}$(CC) $(LDFLAGS) $(REFGLES3_OBJS) $(LDLIBS) $(DLL_SDLLDFLAGS) -o $@
-	$(Q)strip $@
-else ifeq ($(YQ2_OSTYPE), Darwin)
-release/ref_gles3.dylib : $(REFGLES3_OBJS)
-	@echo "===> LD $@"
-	${Q}$(CC) $(LDFLAGS) $(REFGLES3_OBJS) $(LDLIBS) $(SDLLDFLAGS) -o $@
-else
-release/ref_gles3.so : $(REFGLES3_OBJS)
-	@echo "===> LD $@"
-	${Q}$(CC) $(LDFLAGS) $(REFGLES3_OBJS) $(LDLIBS) $(SDLLDFLAGS) -o $@
-endif
-
-# release/ref_soft.so
-ifeq ($(YQ2_OSTYPE), Windows)
-release/ref_soft.dll : $(REFSOFT_OBJS)
-	@echo "===> LD $@"
-	${Q}$(CC) $(LDFLAGS) $(REFSOFT_OBJS) $(LDLIBS) $(DLL_SDLLDFLAGS) -o $@
-	$(Q)strip $@
-else ifeq ($(YQ2_OSTYPE), Darwin)
-release/ref_soft.dylib : $(REFSOFT_OBJS)
-	@echo "===> LD $@"
-	${Q}$(CC) $(LDFLAGS) $(REFSOFT_OBJS) $(LDLIBS) $(SDLLDFLAGS) -o $@
-else
-release/ref_soft.so : $(REFSOFT_OBJS)
-	@echo "===> LD $@"
-	${Q}$(CC) $(LDFLAGS) $(REFSOFT_OBJS) $(LDLIBS) $(SDLLDFLAGS) -o $@
-endif
-
-# release/baseq2/game.so
-ifeq ($(YQ2_OSTYPE), Windows)
-release/baseq2/game.dll : $(GAME_OBJS)
-	@echo "===> LD $@"
-	${Q}$(CC) $(LDFLAGS) $(GAME_OBJS) $(LDLIBS) -o $@
-	$(Q)strip $@
-else ifeq ($(YQ2_OSTYPE), Darwin)
-release/baseq2/game.dylib : $(GAME_OBJS)
-	@echo "===> LD $@"
-	${Q}$(CC) $(LDFLAGS) $(GAME_OBJS) $(LDLIBS) -o $@
-else
-release/baseq2/game.so : $(GAME_OBJS)
-	@echo "===> LD $@"
-	${Q}$(CC) $(LDFLAGS) $(GAME_OBJS) $(LDLIBS) -o $@
-endif
-
-# ----------

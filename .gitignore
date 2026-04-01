@@ -4,4 +4,4 @@
 *.user
 *.d
 .idea
-CMakeFiles/*
+/CMakeFiles/*

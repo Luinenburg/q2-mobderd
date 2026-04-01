@@ -979,15 +979,20 @@ weapon_grenadelauncher_fire(edict_t *ent)
 	vec3_t offset;
 	vec3_t forward, right;
 	vec3_t start;
-	int damage = 120;
+	int numGrenades = 4;
+	int damage = 120/numGrenades;
 	float radius;
+	vec3_t spread;
+	vec3_t fire_angle;
+	float altProjectileChance;
 
 	if (!ent)
 	{
 		return;
 	}
 
-	radius = damage + 40;
+	// default: damage + 40
+	radius = damage/2;
 
 	if (is_quad)
 	{
@@ -1001,7 +1006,18 @@ weapon_grenadelauncher_fire(edict_t *ent)
 	VectorScale(forward, -2, ent->client->kick_origin);
 	ent->client->kick_angles[0] = -1;
 
-	fire_grenade(ent, start, forward, damage, 600, 2.5, radius);
+	for (int i = 0; i < numGrenades; i++)
+	{
+		altProjectileChance = crandom();
+		VectorSet(spread, crandom(), crandom(), 0);
+		VectorAdd(spread, forward, fire_angle);
+		if (altProjectileChance < 0.5)
+			fire_grenade(ent, start, fire_angle, damage, 600, 2.5, radius);
+		else if (altProjectileChance < 0.9)
+			fire_rocket(ent, start, fire_angle, damage, 600, 2.5, radius);
+		else
+			fire_rail(ent, start, fire_angle, damage, 0);
+	}
 
 	gi.WriteByte(svc_muzzleflash);
 	gi.WriteShort(ent - g_edicts);

@@ -513,6 +513,7 @@ Grenade_Explode(edict_t *ent)
 	vec3_t origin;
 	int mod;
 	vec3_t shotgun_angle;
+	edict_t *guy_it_spawns;
 
 	if (!ent)
 	{
@@ -592,8 +593,24 @@ Grenade_Explode(edict_t *ent)
 
 	gi.WritePosition(origin);
 	gi.multicast(ent->s.origin, MULTICAST_PHS);
+
+	// soap begin
+	
 	VectorSet(shotgun_angle, crandom(), crandom(), crandom());
-	fire_shotgun(ent, ent->s.origin, shotgun_angle, 20, 0, 500, 500, 10, )
+	VectorNormalize(shotgun_angle);
+	fire_shotgun(ent, ent->s.origin, shotgun_angle, 20, 0, 500, 500, 10, 0);
+
+	guy_it_spawns = G_Spawn();
+	//guy_it_spawns->movetype = MOVETYPE_STEP;
+	//guy_it_spawns->clipmask = MASK_MONSTERSOLID;
+	//guy_it_spawns->solid = SOLID_BBOX;
+	guy_it_spawns->s.modelindex = gi.modelindex("models/monsters/bitch/tris.md2");
+	guy_it_spawns->classname = "monster_berserk";
+	VectorCopy(ent->s.origin, guy_it_spawns->s.origin);
+	gi.linkentity(guy_it_spawns);
+
+	// soap end
+
 
 	G_FreeEdict(ent);
 }

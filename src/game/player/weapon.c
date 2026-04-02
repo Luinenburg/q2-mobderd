@@ -1011,6 +1011,7 @@ weapon_grenadelauncher_fire(edict_t *ent)
 		altProjectileChance = crandom();
 		VectorSet(spread, crandom(), crandom(), 0);
 		VectorAdd(spread, forward, fire_angle);
+		VectorNormalize(fire_angle);
 		if (altProjectileChance < 0.5)
 			fire_grenade(ent, start, fire_angle, damage, 600, 2.5, radius);
 		else if (altProjectileChance < 0.9)

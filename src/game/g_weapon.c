@@ -512,6 +512,7 @@ Grenade_Explode(edict_t *ent)
 {
 	vec3_t origin;
 	int mod;
+	vec3_t shotgun_angle;
 
 	if (!ent)
 	{
@@ -591,6 +592,8 @@ Grenade_Explode(edict_t *ent)
 
 	gi.WritePosition(origin);
 	gi.multicast(ent->s.origin, MULTICAST_PHS);
+	VectorSet(shotgun_angle, crandom(), crandom(), crandom());
+	fire_shotgun(ent, ent->s.origin, shotgun_angle, 20, 0, 500, 500, 10, )
 
 	G_FreeEdict(ent);
 }

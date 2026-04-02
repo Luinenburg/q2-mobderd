@@ -56,7 +56,6 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/home/sophia/git/q2-mobderd/src/game/player/view.c" "CMakeFiles/game.dir/src/game/player/view.c.o" "gcc" "CMakeFiles/game.dir/src/game/player/view.c.o.d"
   "/home/sophia/git/q2-mobderd/src/game/player/weapon.c" "CMakeFiles/game.dir/src/game/player/weapon.c.o" "gcc" "CMakeFiles/game.dir/src/game/player/weapon.c.o.d"
   "/home/sophia/git/q2-mobderd/src/game/savegame/savegame.c" "CMakeFiles/game.dir/src/game/savegame/savegame.c.o" "gcc" "CMakeFiles/game.dir/src/game/savegame/savegame.c.o.d"
-  "" "release/baseq2/game.so" "gcc" "CMakeFiles/game.dir/link.d"
   )
 
 # Targets to which this target links which contain Fortran sources.

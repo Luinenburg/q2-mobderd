@@ -34,7 +34,6 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/home/sophia/git/q2-mobderd/src/client/refresh/soft/sw_surf.c" "CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_surf.c.o" "gcc" "CMakeFiles/ref_soft.dir/src/client/refresh/soft/sw_surf.c.o.d"
   "/home/sophia/git/q2-mobderd/src/common/md4.c" "CMakeFiles/ref_soft.dir/src/common/md4.c.o" "gcc" "CMakeFiles/ref_soft.dir/src/common/md4.c.o.d"
   "/home/sophia/git/q2-mobderd/src/common/shared/shared.c" "CMakeFiles/ref_soft.dir/src/common/shared/shared.c.o" "gcc" "CMakeFiles/ref_soft.dir/src/common/shared/shared.c.o.d"
-  "" "release/ref_soft.so" "gcc" "CMakeFiles/ref_soft.dir/link.d"
   )
 
 # Targets to which this target links which contain Fortran sources.

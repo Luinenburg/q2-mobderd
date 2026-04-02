@@ -1,5 +1,4 @@
 file(REMOVE_RECURSE
-  "CMakeFiles/game.dir/link.d"
   "CMakeFiles/game.dir/src/common/shared/flash.c.o"
   "CMakeFiles/game.dir/src/common/shared/flash.c.o.d"
   "CMakeFiles/game.dir/src/common/shared/rand.c.o"

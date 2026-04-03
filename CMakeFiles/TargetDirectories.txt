@@ -1,9 +1,0 @@
-/home/sophia/git/q2-mobderd/CMakeFiles/quake2.dir
-/home/sophia/git/q2-mobderd/CMakeFiles/q2ded.dir
-/home/sophia/git/q2-mobderd/CMakeFiles/game.dir
-/home/sophia/git/q2-mobderd/CMakeFiles/ref_gl1.dir
-/home/sophia/git/q2-mobderd/CMakeFiles/ref_gl3.dir
-/home/sophia/git/q2-mobderd/CMakeFiles/ref_gles3.dir
-/home/sophia/git/q2-mobderd/CMakeFiles/ref_soft.dir
-/home/sophia/git/q2-mobderd/CMakeFiles/edit_cache.dir
-/home/sophia/git/q2-mobderd/CMakeFiles/rebuild_cache.dir

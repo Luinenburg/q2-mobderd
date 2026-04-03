@@ -1015,7 +1015,7 @@ weapon_grenadelauncher_fire(edict_t *ent)
 		if (altProjectileChance < 0.5)
 			fire_grenade(ent, start, fire_angle, damage, 600, 2.5, radius);
 		else if (altProjectileChance < 0.9)
-			fire_rocket(ent, start, fire_angle, damage, 600, 2.5, radius);
+			fire_rocket(ent, start, fire_angle, damage, 600, radius, damage/2);
 		else
 			fire_rail(ent, start, fire_angle, damage, 0);
 	}

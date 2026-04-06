@@ -31,6 +31,9 @@
  * a non-instant attack weapon.  It checks to see if a
  * monster's dodge function should be called.
  */
+
+void
+SP_monster_gunner(edict_t *self);
 void
 check_dodge(edict_t *self, vec3_t start, vec3_t dir, int speed)
 {
@@ -598,16 +601,17 @@ Grenade_Explode(edict_t *ent)
 	
 	VectorSet(shotgun_angle, crandom(), crandom(), crandom());
 	VectorNormalize(shotgun_angle);
-	fire_shotgun(ent, ent->s.origin, shotgun_angle, 20, 0, 500, 500, 10, 0);
+	fire_shotgun(ent, ent->s.origin, shotgun_angle, 10, 0, 1200, 1200, 20, 0);
 
 	guy_it_spawns = G_Spawn();
-	//guy_it_spawns->movetype = MOVETYPE_STEP;
-	//guy_it_spawns->clipmask = MASK_MONSTERSOLID;
-	//guy_it_spawns->solid = SOLID_BBOX;
-	guy_it_spawns->s.modelindex = gi.modelindex("models/monsters/bitch/tris.md2");
-	guy_it_spawns->classname = "monster_berserk";
-	VectorCopy(ent->s.origin, guy_it_spawns->s.origin);
-	gi.linkentity(guy_it_spawns);
+	if (guy_it_spawns)
+	{
+		VectorCopy(ent->s.origin, guy_it_spawns->s.origin);
+		SP_monster_gunner(guy_it_spawns);
+		guy_it_spawns->s.modelindex = gi.modelindex("models/monsters/bitch/tris.md2");
+	}
+
+	//gi.linkentity(guy_it_spawns);
 
 	// soap end
 

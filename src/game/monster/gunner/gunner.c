@@ -886,11 +886,11 @@ SP_monster_gunner(edict_t *self)
 		return;
 	}
 
-	if (deathmatch->value)
-	{
-		G_FreeEdict(self);
-		return;
-	}
+	//if (deathmatch->value)
+	//{
+	//	G_FreeEdict(self);
+	//	return;
+	//}
 
 	// Force recaching at next footstep to ensure
 	// that the sound indices are correct.

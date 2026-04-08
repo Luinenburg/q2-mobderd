@@ -463,7 +463,7 @@ ClientObituary(edict_t *self, edict_t *inflictor /* unused */,
 	   	edict_t *attacker)
 {
 	int mod;
-	char[100] specialMessageBuffer;
+	char specialMessageBuffer[100];
 	char *message;
 	char *message2;
 	qboolean ff;
@@ -537,18 +537,19 @@ ClientObituary(edict_t *self, edict_t *inflictor /* unused */,
 					break;
 				case MOD_HG_SPLASH:
 				case MOD_G_SPLASH:
-					sprintf(message, "tripped on %s own grenade", gender);
-
+					sprintf(specialMessageBuffer, "tripped on %s own grenade", gender);
+					message=specialMessageBuffer;
 					break;
 				case MOD_R_SPLASH:
-					sprintf(message, "blew %sself up", gender);
-
+					sprintf(specialMessageBuffer, "blew %sself up", gender);
+					message=specialMessageBuffer;
 					break;
 				case MOD_BFG_BLAST:
 					message = "should have used a smaller gun";
 					break;
 				default:
-					sprintf(message, "killed %sselves", gender);
+					sprintf(specialMessageBuffer, "killed %sselves", gender);
+					message=specialMessageBuffer;
 
 					break;
 			}

@@ -76,6 +76,7 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/home/sophia/git/q2-mobderd/src/server/sv_send.c" "CMakeFiles/quake2.dir/src/server/sv_send.c.o" "gcc" "CMakeFiles/quake2.dir/src/server/sv_send.c.o.d"
   "/home/sophia/git/q2-mobderd/src/server/sv_user.c" "CMakeFiles/quake2.dir/src/server/sv_user.c.o" "gcc" "CMakeFiles/quake2.dir/src/server/sv_user.c.o.d"
   "/home/sophia/git/q2-mobderd/src/server/sv_world.c" "CMakeFiles/quake2.dir/src/server/sv_world.c.o" "gcc" "CMakeFiles/quake2.dir/src/server/sv_world.c.o.d"
+  "" "release/quake2" "gcc" "CMakeFiles/quake2.dir/link.d"
   )
 
 # Targets to which this target links which contain Fortran sources.

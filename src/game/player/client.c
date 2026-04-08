@@ -463,6 +463,7 @@ ClientObituary(edict_t *self, edict_t *inflictor /* unused */,
 	   	edict_t *attacker)
 {
 	int mod;
+	char[100] specialMessageBuffer;
 	char *message;
 	char *message2;
 	qboolean ff;

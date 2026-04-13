@@ -463,14 +463,18 @@ ClientObituary(edict_t *self, edict_t *inflictor /* unused */,
 	   	edict_t *attacker)
 {
 	int mod;
+	char specialMessageBuffer[100];
 	char *message;
 	char *message2;
 	qboolean ff;
+	char *gender;
 
 	if (!self || !inflictor)
 	{
 		return;
 	}
+
+	gender = Info_ValueForKey(self->client->pers.userinfo, "gender");
 
 	if (coop->value && attacker && attacker->client)
 	{
@@ -533,54 +537,19 @@ ClientObituary(edict_t *self, edict_t *inflictor /* unused */,
 					break;
 				case MOD_HG_SPLASH:
 				case MOD_G_SPLASH:
-
-					if (IsNeutral(self))
-					{
-						message = "tripped on its own grenade";
-					}
-					else if (IsFemale(self))
-					{
-						message = "tripped on her own grenade";
-					}
-					else
-					{
-						message = "tripped on his own grenade";
-					}
-
+					sprintf(specialMessageBuffer, "tripped on %s own grenade", gender);
+					message=specialMessageBuffer;
 					break;
 				case MOD_R_SPLASH:
-
-					if (IsNeutral(self))
-					{
-						message = "blew itself up";
-					}
-					else if (IsFemale(self))
-					{
-						message = "blew herself up";
-					}
-					else
-					{
-						message = "blew himself up";
-					}
-
+					sprintf(specialMessageBuffer, "blew %sself up", gender);
+					message=specialMessageBuffer;
 					break;
 				case MOD_BFG_BLAST:
 					message = "should have used a smaller gun";
 					break;
 				default:
-
-					if (IsNeutral(self))
-					{
-						message = "killed itself";
-					}
-					else if (IsFemale(self))
-					{
-						message = "killed herself";
-					}
-					else
-					{
-						message = "killed himself";
-					}
+					sprintf(specialMessageBuffer, "killed %sselves", gender);
+					message=specialMessageBuffer;
 
 					break;
 			}

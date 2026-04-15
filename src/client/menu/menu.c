@@ -6055,6 +6055,17 @@ M_Menu_Quit_f(void)
     M_PushMenu(M_Quit_Draw, M_Quit_Key);
 }
 
+static void
+M_Test_Draw(void) {
+	int w, h;
+	float scale = SCR_GetMenuScale();
+}
+
+static void
+M_Menu_Test_f(void) {
+	M_PushMenu(M_Test_Draw, M_Test_Key);
+}
+
 void
 M_Init(void)
 {

@@ -53,10 +53,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/sophia/git/q2-mobderd
+CMAKE_SOURCE_DIR = /home/soap/git/q2-mobderd
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/sophia/git/q2-mobderd
+CMAKE_BINARY_DIR = /home/soap/git/q2-mobderd
 
 # Include any dependencies generated for this target.
 include CMakeFiles/ref_gl3.dir/depend.make
@@ -72,310 +72,310 @@ include CMakeFiles/ref_gl3.dir/flags.make
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_draw.c.o: CMakeFiles/ref_gl3.dir/flags.make
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_draw.c.o: src/client/refresh/gl3/gl3_draw.c
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_draw.c.o: CMakeFiles/ref_gl3.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/sophia/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_draw.c.o"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_draw.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_draw.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_draw.c.o -c /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_draw.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_draw.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_draw.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_draw.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_draw.c.o -c /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_draw.c
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_draw.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_draw.c.i"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_draw.c > CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_draw.c.i
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_draw.c > CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_draw.c.i
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_draw.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_draw.c.s"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_draw.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_draw.c.s
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_draw.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_draw.c.s
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_image.c.o: CMakeFiles/ref_gl3.dir/flags.make
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_image.c.o: src/client/refresh/gl3/gl3_image.c
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_image.c.o: CMakeFiles/ref_gl3.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/sophia/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_image.c.o"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_image.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_image.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_image.c.o -c /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_image.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_image.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_image.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_image.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_image.c.o -c /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_image.c
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_image.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_image.c.i"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_image.c > CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_image.c.i
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_image.c > CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_image.c.i
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_image.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_image.c.s"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_image.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_image.c.s
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_image.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_image.c.s
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_light.c.o: CMakeFiles/ref_gl3.dir/flags.make
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_light.c.o: src/client/refresh/gl3/gl3_light.c
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_light.c.o: CMakeFiles/ref_gl3.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/sophia/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_light.c.o"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_light.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_light.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_light.c.o -c /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_light.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_light.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_light.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_light.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_light.c.o -c /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_light.c
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_light.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_light.c.i"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_light.c > CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_light.c.i
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_light.c > CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_light.c.i
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_light.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_light.c.s"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_light.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_light.c.s
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_light.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_light.c.s
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_lightmap.c.o: CMakeFiles/ref_gl3.dir/flags.make
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_lightmap.c.o: src/client/refresh/gl3/gl3_lightmap.c
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_lightmap.c.o: CMakeFiles/ref_gl3.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/sophia/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_lightmap.c.o"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_lightmap.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_lightmap.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_lightmap.c.o -c /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_lightmap.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_lightmap.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_lightmap.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_lightmap.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_lightmap.c.o -c /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_lightmap.c
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_lightmap.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_lightmap.c.i"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_lightmap.c > CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_lightmap.c.i
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_lightmap.c > CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_lightmap.c.i
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_lightmap.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_lightmap.c.s"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_lightmap.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_lightmap.c.s
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_lightmap.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_lightmap.c.s
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_main.c.o: CMakeFiles/ref_gl3.dir/flags.make
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_main.c.o: src/client/refresh/gl3/gl3_main.c
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_main.c.o: CMakeFiles/ref_gl3.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/sophia/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_main.c.o"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_main.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_main.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_main.c.o -c /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_main.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_main.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_main.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_main.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_main.c.o -c /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_main.c
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_main.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_main.c.i"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_main.c > CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_main.c.i
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_main.c > CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_main.c.i
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_main.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_main.c.s"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_main.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_main.c.s
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_main.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_main.c.s
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_mesh.c.o: CMakeFiles/ref_gl3.dir/flags.make
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_mesh.c.o: src/client/refresh/gl3/gl3_mesh.c
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_mesh.c.o: CMakeFiles/ref_gl3.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/sophia/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_mesh.c.o"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_mesh.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_mesh.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_mesh.c.o -c /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_mesh.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_mesh.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_mesh.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_mesh.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_mesh.c.o -c /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_mesh.c
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_mesh.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_mesh.c.i"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_mesh.c > CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_mesh.c.i
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_mesh.c > CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_mesh.c.i
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_mesh.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_mesh.c.s"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_mesh.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_mesh.c.s
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_mesh.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_mesh.c.s
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_misc.c.o: CMakeFiles/ref_gl3.dir/flags.make
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_misc.c.o: src/client/refresh/gl3/gl3_misc.c
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_misc.c.o: CMakeFiles/ref_gl3.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/sophia/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_misc.c.o"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_misc.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_misc.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_misc.c.o -c /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_misc.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_misc.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_misc.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_misc.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_misc.c.o -c /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_misc.c
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_misc.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_misc.c.i"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_misc.c > CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_misc.c.i
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_misc.c > CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_misc.c.i
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_misc.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_misc.c.s"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_misc.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_misc.c.s
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_misc.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_misc.c.s
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_model.c.o: CMakeFiles/ref_gl3.dir/flags.make
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_model.c.o: src/client/refresh/gl3/gl3_model.c
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_model.c.o: CMakeFiles/ref_gl3.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/sophia/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_model.c.o"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_model.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_model.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_model.c.o -c /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_model.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_model.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_model.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_model.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_model.c.o -c /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_model.c
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_model.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_model.c.i"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_model.c > CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_model.c.i
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_model.c > CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_model.c.i
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_model.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_model.c.s"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_model.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_model.c.s
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_model.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_model.c.s
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_sdl.c.o: CMakeFiles/ref_gl3.dir/flags.make
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_sdl.c.o: src/client/refresh/gl3/gl3_sdl.c
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_sdl.c.o: CMakeFiles/ref_gl3.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/sophia/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_sdl.c.o"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_sdl.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_sdl.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_sdl.c.o -c /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_sdl.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_sdl.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_sdl.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_sdl.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_sdl.c.o -c /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_sdl.c
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_sdl.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_sdl.c.i"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_sdl.c > CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_sdl.c.i
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_sdl.c > CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_sdl.c.i
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_sdl.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_sdl.c.s"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_sdl.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_sdl.c.s
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_sdl.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_sdl.c.s
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_surf.c.o: CMakeFiles/ref_gl3.dir/flags.make
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_surf.c.o: src/client/refresh/gl3/gl3_surf.c
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_surf.c.o: CMakeFiles/ref_gl3.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/sophia/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_surf.c.o"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_surf.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_surf.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_surf.c.o -c /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_surf.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_surf.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_surf.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_surf.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_surf.c.o -c /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_surf.c
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_surf.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_surf.c.i"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_surf.c > CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_surf.c.i
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_surf.c > CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_surf.c.i
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_surf.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_surf.c.s"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_surf.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_surf.c.s
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_surf.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_surf.c.s
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_warp.c.o: CMakeFiles/ref_gl3.dir/flags.make
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_warp.c.o: src/client/refresh/gl3/gl3_warp.c
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_warp.c.o: CMakeFiles/ref_gl3.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/sophia/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_11) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_warp.c.o"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_warp.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_warp.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_warp.c.o -c /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_warp.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_11) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_warp.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_warp.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_warp.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_warp.c.o -c /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_warp.c
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_warp.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_warp.c.i"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_warp.c > CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_warp.c.i
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_warp.c > CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_warp.c.i
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_warp.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_warp.c.s"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_warp.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_warp.c.s
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_warp.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_warp.c.s
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_shaders.c.o: CMakeFiles/ref_gl3.dir/flags.make
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_shaders.c.o: src/client/refresh/gl3/gl3_shaders.c
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_shaders.c.o: CMakeFiles/ref_gl3.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/sophia/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_12) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_shaders.c.o"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_shaders.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_shaders.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_shaders.c.o -c /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_shaders.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_12) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_shaders.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_shaders.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_shaders.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_shaders.c.o -c /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_shaders.c
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_shaders.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_shaders.c.i"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_shaders.c > CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_shaders.c.i
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_shaders.c > CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_shaders.c.i
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_shaders.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_shaders.c.s"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/sophia/git/q2-mobderd/src/client/refresh/gl3/gl3_shaders.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_shaders.c.s
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/soap/git/q2-mobderd/src/client/refresh/gl3/gl3_shaders.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/gl3_shaders.c.s
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/files/models.c.o: CMakeFiles/ref_gl3.dir/flags.make
 CMakeFiles/ref_gl3.dir/src/client/refresh/files/models.c.o: src/client/refresh/files/models.c
 CMakeFiles/ref_gl3.dir/src/client/refresh/files/models.c.o: CMakeFiles/ref_gl3.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/sophia/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_13) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/files/models.c.o"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/files/models.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/files/models.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/files/models.c.o -c /home/sophia/git/q2-mobderd/src/client/refresh/files/models.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_13) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/files/models.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/files/models.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/files/models.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/files/models.c.o -c /home/soap/git/q2-mobderd/src/client/refresh/files/models.c
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/files/models.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/ref_gl3.dir/src/client/refresh/files/models.c.i"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/sophia/git/q2-mobderd/src/client/refresh/files/models.c > CMakeFiles/ref_gl3.dir/src/client/refresh/files/models.c.i
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/soap/git/q2-mobderd/src/client/refresh/files/models.c > CMakeFiles/ref_gl3.dir/src/client/refresh/files/models.c.i
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/files/models.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/ref_gl3.dir/src/client/refresh/files/models.c.s"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/sophia/git/q2-mobderd/src/client/refresh/files/models.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/files/models.c.s
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/soap/git/q2-mobderd/src/client/refresh/files/models.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/files/models.c.s
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/files/pcx.c.o: CMakeFiles/ref_gl3.dir/flags.make
 CMakeFiles/ref_gl3.dir/src/client/refresh/files/pcx.c.o: src/client/refresh/files/pcx.c
 CMakeFiles/ref_gl3.dir/src/client/refresh/files/pcx.c.o: CMakeFiles/ref_gl3.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/sophia/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_14) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/files/pcx.c.o"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/files/pcx.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/files/pcx.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/files/pcx.c.o -c /home/sophia/git/q2-mobderd/src/client/refresh/files/pcx.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_14) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/files/pcx.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/files/pcx.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/files/pcx.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/files/pcx.c.o -c /home/soap/git/q2-mobderd/src/client/refresh/files/pcx.c
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/files/pcx.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/ref_gl3.dir/src/client/refresh/files/pcx.c.i"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/sophia/git/q2-mobderd/src/client/refresh/files/pcx.c > CMakeFiles/ref_gl3.dir/src/client/refresh/files/pcx.c.i
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/soap/git/q2-mobderd/src/client/refresh/files/pcx.c > CMakeFiles/ref_gl3.dir/src/client/refresh/files/pcx.c.i
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/files/pcx.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/ref_gl3.dir/src/client/refresh/files/pcx.c.s"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/sophia/git/q2-mobderd/src/client/refresh/files/pcx.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/files/pcx.c.s
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/soap/git/q2-mobderd/src/client/refresh/files/pcx.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/files/pcx.c.s
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/files/stb.c.o: CMakeFiles/ref_gl3.dir/flags.make
 CMakeFiles/ref_gl3.dir/src/client/refresh/files/stb.c.o: src/client/refresh/files/stb.c
 CMakeFiles/ref_gl3.dir/src/client/refresh/files/stb.c.o: CMakeFiles/ref_gl3.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/sophia/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_15) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/files/stb.c.o"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/files/stb.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/files/stb.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/files/stb.c.o -c /home/sophia/git/q2-mobderd/src/client/refresh/files/stb.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_15) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/files/stb.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/files/stb.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/files/stb.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/files/stb.c.o -c /home/soap/git/q2-mobderd/src/client/refresh/files/stb.c
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/files/stb.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/ref_gl3.dir/src/client/refresh/files/stb.c.i"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/sophia/git/q2-mobderd/src/client/refresh/files/stb.c > CMakeFiles/ref_gl3.dir/src/client/refresh/files/stb.c.i
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/soap/git/q2-mobderd/src/client/refresh/files/stb.c > CMakeFiles/ref_gl3.dir/src/client/refresh/files/stb.c.i
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/files/stb.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/ref_gl3.dir/src/client/refresh/files/stb.c.s"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/sophia/git/q2-mobderd/src/client/refresh/files/stb.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/files/stb.c.s
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/soap/git/q2-mobderd/src/client/refresh/files/stb.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/files/stb.c.s
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/files/surf.c.o: CMakeFiles/ref_gl3.dir/flags.make
 CMakeFiles/ref_gl3.dir/src/client/refresh/files/surf.c.o: src/client/refresh/files/surf.c
 CMakeFiles/ref_gl3.dir/src/client/refresh/files/surf.c.o: CMakeFiles/ref_gl3.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/sophia/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_16) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/files/surf.c.o"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/files/surf.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/files/surf.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/files/surf.c.o -c /home/sophia/git/q2-mobderd/src/client/refresh/files/surf.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_16) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/files/surf.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/files/surf.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/files/surf.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/files/surf.c.o -c /home/soap/git/q2-mobderd/src/client/refresh/files/surf.c
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/files/surf.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/ref_gl3.dir/src/client/refresh/files/surf.c.i"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/sophia/git/q2-mobderd/src/client/refresh/files/surf.c > CMakeFiles/ref_gl3.dir/src/client/refresh/files/surf.c.i
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/soap/git/q2-mobderd/src/client/refresh/files/surf.c > CMakeFiles/ref_gl3.dir/src/client/refresh/files/surf.c.i
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/files/surf.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/ref_gl3.dir/src/client/refresh/files/surf.c.s"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/sophia/git/q2-mobderd/src/client/refresh/files/surf.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/files/surf.c.s
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/soap/git/q2-mobderd/src/client/refresh/files/surf.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/files/surf.c.s
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/files/wal.c.o: CMakeFiles/ref_gl3.dir/flags.make
 CMakeFiles/ref_gl3.dir/src/client/refresh/files/wal.c.o: src/client/refresh/files/wal.c
 CMakeFiles/ref_gl3.dir/src/client/refresh/files/wal.c.o: CMakeFiles/ref_gl3.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/sophia/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_17) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/files/wal.c.o"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/files/wal.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/files/wal.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/files/wal.c.o -c /home/sophia/git/q2-mobderd/src/client/refresh/files/wal.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_17) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/files/wal.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/files/wal.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/files/wal.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/files/wal.c.o -c /home/soap/git/q2-mobderd/src/client/refresh/files/wal.c
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/files/wal.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/ref_gl3.dir/src/client/refresh/files/wal.c.i"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/sophia/git/q2-mobderd/src/client/refresh/files/wal.c > CMakeFiles/ref_gl3.dir/src/client/refresh/files/wal.c.i
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/soap/git/q2-mobderd/src/client/refresh/files/wal.c > CMakeFiles/ref_gl3.dir/src/client/refresh/files/wal.c.i
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/files/wal.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/ref_gl3.dir/src/client/refresh/files/wal.c.s"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/sophia/git/q2-mobderd/src/client/refresh/files/wal.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/files/wal.c.s
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/soap/git/q2-mobderd/src/client/refresh/files/wal.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/files/wal.c.s
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/files/pvs.c.o: CMakeFiles/ref_gl3.dir/flags.make
 CMakeFiles/ref_gl3.dir/src/client/refresh/files/pvs.c.o: src/client/refresh/files/pvs.c
 CMakeFiles/ref_gl3.dir/src/client/refresh/files/pvs.c.o: CMakeFiles/ref_gl3.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/sophia/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_18) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/files/pvs.c.o"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/files/pvs.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/files/pvs.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/files/pvs.c.o -c /home/sophia/git/q2-mobderd/src/client/refresh/files/pvs.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_18) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/files/pvs.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/files/pvs.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/files/pvs.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/files/pvs.c.o -c /home/soap/git/q2-mobderd/src/client/refresh/files/pvs.c
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/files/pvs.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/ref_gl3.dir/src/client/refresh/files/pvs.c.i"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/sophia/git/q2-mobderd/src/client/refresh/files/pvs.c > CMakeFiles/ref_gl3.dir/src/client/refresh/files/pvs.c.i
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/soap/git/q2-mobderd/src/client/refresh/files/pvs.c > CMakeFiles/ref_gl3.dir/src/client/refresh/files/pvs.c.i
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/files/pvs.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/ref_gl3.dir/src/client/refresh/files/pvs.c.s"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/sophia/git/q2-mobderd/src/client/refresh/files/pvs.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/files/pvs.c.s
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/soap/git/q2-mobderd/src/client/refresh/files/pvs.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/files/pvs.c.s
 
 CMakeFiles/ref_gl3.dir/src/common/shared/shared.c.o: CMakeFiles/ref_gl3.dir/flags.make
 CMakeFiles/ref_gl3.dir/src/common/shared/shared.c.o: src/common/shared/shared.c
 CMakeFiles/ref_gl3.dir/src/common/shared/shared.c.o: CMakeFiles/ref_gl3.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/sophia/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_19) "Building C object CMakeFiles/ref_gl3.dir/src/common/shared/shared.c.o"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/common/shared/shared.c.o -MF CMakeFiles/ref_gl3.dir/src/common/shared/shared.c.o.d -o CMakeFiles/ref_gl3.dir/src/common/shared/shared.c.o -c /home/sophia/git/q2-mobderd/src/common/shared/shared.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_19) "Building C object CMakeFiles/ref_gl3.dir/src/common/shared/shared.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/common/shared/shared.c.o -MF CMakeFiles/ref_gl3.dir/src/common/shared/shared.c.o.d -o CMakeFiles/ref_gl3.dir/src/common/shared/shared.c.o -c /home/soap/git/q2-mobderd/src/common/shared/shared.c
 
 CMakeFiles/ref_gl3.dir/src/common/shared/shared.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/ref_gl3.dir/src/common/shared/shared.c.i"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/sophia/git/q2-mobderd/src/common/shared/shared.c > CMakeFiles/ref_gl3.dir/src/common/shared/shared.c.i
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/soap/git/q2-mobderd/src/common/shared/shared.c > CMakeFiles/ref_gl3.dir/src/common/shared/shared.c.i
 
 CMakeFiles/ref_gl3.dir/src/common/shared/shared.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/ref_gl3.dir/src/common/shared/shared.c.s"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/sophia/git/q2-mobderd/src/common/shared/shared.c -o CMakeFiles/ref_gl3.dir/src/common/shared/shared.c.s
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/soap/git/q2-mobderd/src/common/shared/shared.c -o CMakeFiles/ref_gl3.dir/src/common/shared/shared.c.s
 
 CMakeFiles/ref_gl3.dir/src/common/md4.c.o: CMakeFiles/ref_gl3.dir/flags.make
 CMakeFiles/ref_gl3.dir/src/common/md4.c.o: src/common/md4.c
 CMakeFiles/ref_gl3.dir/src/common/md4.c.o: CMakeFiles/ref_gl3.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/sophia/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_20) "Building C object CMakeFiles/ref_gl3.dir/src/common/md4.c.o"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/common/md4.c.o -MF CMakeFiles/ref_gl3.dir/src/common/md4.c.o.d -o CMakeFiles/ref_gl3.dir/src/common/md4.c.o -c /home/sophia/git/q2-mobderd/src/common/md4.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_20) "Building C object CMakeFiles/ref_gl3.dir/src/common/md4.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/common/md4.c.o -MF CMakeFiles/ref_gl3.dir/src/common/md4.c.o.d -o CMakeFiles/ref_gl3.dir/src/common/md4.c.o -c /home/soap/git/q2-mobderd/src/common/md4.c
 
 CMakeFiles/ref_gl3.dir/src/common/md4.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/ref_gl3.dir/src/common/md4.c.i"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/sophia/git/q2-mobderd/src/common/md4.c > CMakeFiles/ref_gl3.dir/src/common/md4.c.i
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/soap/git/q2-mobderd/src/common/md4.c > CMakeFiles/ref_gl3.dir/src/common/md4.c.i
 
 CMakeFiles/ref_gl3.dir/src/common/md4.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/ref_gl3.dir/src/common/md4.c.s"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/sophia/git/q2-mobderd/src/common/md4.c -o CMakeFiles/ref_gl3.dir/src/common/md4.c.s
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/soap/git/q2-mobderd/src/common/md4.c -o CMakeFiles/ref_gl3.dir/src/common/md4.c.s
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/glad/src/glad.c.o: CMakeFiles/ref_gl3.dir/flags.make
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/glad/src/glad.c.o: src/client/refresh/gl3/glad/src/glad.c
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/glad/src/glad.c.o: CMakeFiles/ref_gl3.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/sophia/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_21) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/glad/src/glad.c.o"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/glad/src/glad.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/glad/src/glad.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/glad/src/glad.c.o -c /home/sophia/git/q2-mobderd/src/client/refresh/gl3/glad/src/glad.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_21) "Building C object CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/glad/src/glad.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/glad/src/glad.c.o -MF CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/glad/src/glad.c.o.d -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/glad/src/glad.c.o -c /home/soap/git/q2-mobderd/src/client/refresh/gl3/glad/src/glad.c
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/glad/src/glad.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/glad/src/glad.c.i"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/sophia/git/q2-mobderd/src/client/refresh/gl3/glad/src/glad.c > CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/glad/src/glad.c.i
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/soap/git/q2-mobderd/src/client/refresh/gl3/glad/src/glad.c > CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/glad/src/glad.c.i
 
 CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/glad/src/glad.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/glad/src/glad.c.s"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/sophia/git/q2-mobderd/src/client/refresh/gl3/glad/src/glad.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/glad/src/glad.c.s
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/soap/git/q2-mobderd/src/client/refresh/gl3/glad/src/glad.c -o CMakeFiles/ref_gl3.dir/src/client/refresh/gl3/glad/src/glad.c.s
 
 CMakeFiles/ref_gl3.dir/src/backends/unix/shared/hunk.c.o: CMakeFiles/ref_gl3.dir/flags.make
 CMakeFiles/ref_gl3.dir/src/backends/unix/shared/hunk.c.o: src/backends/unix/shared/hunk.c
 CMakeFiles/ref_gl3.dir/src/backends/unix/shared/hunk.c.o: CMakeFiles/ref_gl3.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/sophia/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_22) "Building C object CMakeFiles/ref_gl3.dir/src/backends/unix/shared/hunk.c.o"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/backends/unix/shared/hunk.c.o -MF CMakeFiles/ref_gl3.dir/src/backends/unix/shared/hunk.c.o.d -o CMakeFiles/ref_gl3.dir/src/backends/unix/shared/hunk.c.o -c /home/sophia/git/q2-mobderd/src/backends/unix/shared/hunk.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_22) "Building C object CMakeFiles/ref_gl3.dir/src/backends/unix/shared/hunk.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/ref_gl3.dir/src/backends/unix/shared/hunk.c.o -MF CMakeFiles/ref_gl3.dir/src/backends/unix/shared/hunk.c.o.d -o CMakeFiles/ref_gl3.dir/src/backends/unix/shared/hunk.c.o -c /home/soap/git/q2-mobderd/src/backends/unix/shared/hunk.c
 
 CMakeFiles/ref_gl3.dir/src/backends/unix/shared/hunk.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/ref_gl3.dir/src/backends/unix/shared/hunk.c.i"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/sophia/git/q2-mobderd/src/backends/unix/shared/hunk.c > CMakeFiles/ref_gl3.dir/src/backends/unix/shared/hunk.c.i
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/soap/git/q2-mobderd/src/backends/unix/shared/hunk.c > CMakeFiles/ref_gl3.dir/src/backends/unix/shared/hunk.c.i
 
 CMakeFiles/ref_gl3.dir/src/backends/unix/shared/hunk.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/ref_gl3.dir/src/backends/unix/shared/hunk.c.s"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/sophia/git/q2-mobderd/src/backends/unix/shared/hunk.c -o CMakeFiles/ref_gl3.dir/src/backends/unix/shared/hunk.c.s
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/soap/git/q2-mobderd/src/backends/unix/shared/hunk.c -o CMakeFiles/ref_gl3.dir/src/backends/unix/shared/hunk.c.s
 
 # Object files for target ref_gl3
 ref_gl3_OBJECTS = \
@@ -431,7 +431,7 @@ release/ref_gl3.so: CMakeFiles/ref_gl3.dir/build.make
 release/ref_gl3.so: /usr/lib/x86_64-linux-gnu/libSDL2main.a
 release/ref_gl3.so: /usr/lib/x86_64-linux-gnu/libSDL2.so
 release/ref_gl3.so: CMakeFiles/ref_gl3.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/sophia/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_23) "Linking C shared module release/ref_gl3.so"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_23) "Linking C shared module release/ref_gl3.so"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/ref_gl3.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
@@ -443,6 +443,6 @@ CMakeFiles/ref_gl3.dir/clean:
 .PHONY : CMakeFiles/ref_gl3.dir/clean
 
 CMakeFiles/ref_gl3.dir/depend:
-	cd /home/sophia/git/q2-mobderd && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/sophia/git/q2-mobderd /home/sophia/git/q2-mobderd /home/sophia/git/q2-mobderd /home/sophia/git/q2-mobderd /home/sophia/git/q2-mobderd/CMakeFiles/ref_gl3.dir/DependInfo.cmake "--color=$(COLOR)"
+	cd /home/soap/git/q2-mobderd && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/soap/git/q2-mobderd /home/soap/git/q2-mobderd /home/soap/git/q2-mobderd /home/soap/git/q2-mobderd /home/soap/git/q2-mobderd/CMakeFiles/ref_gl3.dir/DependInfo.cmake "--color=$(COLOR)"
 .PHONY : CMakeFiles/ref_gl3.dir/depend
 

@@ -6055,15 +6055,29 @@ M_Menu_Quit_f(void)
     M_PushMenu(M_Quit_Draw, M_Quit_Key);
 }
 
-static void
-M_Test_Draw(void) {
-	int w, h;
-	float scale = SCR_GetMenuScale();
+static const char*
+M_Bungu_Key(int key) {
+	int menu_key = Key_GetMenuKey(key);
+	switch (menu_key) {
+		case K_ESCAPE:
+			M_PopMenu();
+			break;
+	}
+	return NULL;
 }
 
 static void
-M_Menu_Test_f(void) {
-	M_PushMenu(M_Test_Draw, M_Test_Key);
+M_Bungu_Draw(void) {
+	int w, h;
+	float scale = SCR_GetMenuScale() / 4;
+
+	Draw_GetPicSize(&w, &h, "bungu");
+	Draw_PicScaled((viddef.width - w * scale) /2, (viddef.height - h * scale) /2, "bungu", scale);
+}
+
+static void
+M_Menu_Bungu_f(void) {
+	M_PushMenu(M_Bungu_Draw, M_Bungu_Key);
 }
 
 void
@@ -6097,6 +6111,7 @@ M_Init(void)
     Cmd_AddCommand("menu_buttons", M_Menu_ControllerButtons_f);
     Cmd_AddCommand("menu_altbuttons", M_Menu_ControllerAltButtons_f);
     Cmd_AddCommand("menu_quit", M_Menu_Quit_f);
+	Cmd_AddCommand("menu_test", M_Menu_Bungu_f);
 
     /* initialize the server address book cvars (adr0, adr1, ...)
      * so the entries are not lost if you don't open the address book */

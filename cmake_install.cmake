@@ -1,4 +1,4 @@
-# Install script for directory: /home/sophia/git/q2-mobderd
+# Install script for directory: /home/soap/git/q2-mobderd
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -50,5 +50,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/home/sophia/git/q2-mobderd/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/home/soap/git/q2-mobderd/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

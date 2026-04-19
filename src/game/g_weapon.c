@@ -26,6 +26,9 @@
 
 #include "header/local.h"
 
+void
+SP_monster_berserk(edict_t *self);
+
 /*
  * This is a support routine used when a client is firing
  * a non-instant attack weapon.  It checks to see if a
@@ -512,6 +515,7 @@ Grenade_Explode(edict_t *ent)
 {
 	vec3_t origin;
 	int mod;
+	edict_t *test_entity;
 
 	if (!ent)
 	{
@@ -592,6 +596,11 @@ Grenade_Explode(edict_t *ent)
 	gi.WritePosition(origin);
 	gi.multicast(ent->s.origin, MULTICAST_PHS);
 
+	test_entity = G_Spawn();
+	VectorCopy(ent->s.origin, test_entity->s.origin);
+	SP_monster_berserk(test_entity);
+
+	test_entity->monsterinfo.aiflags += AI_GOOD_GUY;
 	G_FreeEdict(ent);
 }
 

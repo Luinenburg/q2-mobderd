@@ -1,5 +1,4 @@
 file(REMOVE_RECURSE
-  "CMakeFiles/quake2.dir/link.d"
   "CMakeFiles/quake2.dir/src/backends/generic/misc.c.o"
   "CMakeFiles/quake2.dir/src/backends/generic/misc.c.o.d"
   "CMakeFiles/quake2.dir/src/backends/unix/main.c.o"

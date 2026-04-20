@@ -782,7 +782,7 @@ SP_monster_tower_sap(edict_t *self)
 	self->monsterinfo.run = tower_sap_attack;
 	self->monsterinfo.attack = tower_sap_attack;
 	self->monsterinfo.sight = tower_sap_sight;
-	self->monsterinfo.idle = tower_sap_attack;
+	self->monsterinfo.idle = tower_sap_idle;
 
 	gi.linkentity(self);
 

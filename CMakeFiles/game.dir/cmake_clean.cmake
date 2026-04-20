@@ -1,4 +1,5 @@
 file(REMOVE_RECURSE
+  "CMakeFiles/game.dir/link.d"
   "CMakeFiles/game.dir/src/common/shared/flash.c.o"
   "CMakeFiles/game.dir/src/common/shared/flash.c.o.d"
   "CMakeFiles/game.dir/src/common/shared/rand.c.o"
@@ -83,6 +84,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/game.dir/src/game/monster/supertank/supertank.c.o.d"
   "CMakeFiles/game.dir/src/game/monster/tank/tank.c.o"
   "CMakeFiles/game.dir/src/game/monster/tank/tank.c.o.d"
+  "CMakeFiles/game.dir/src/game/monster/tower_sap/tower_sap.c.o"
+  "CMakeFiles/game.dir/src/game/monster/tower_sap/tower_sap.c.o.d"
   "CMakeFiles/game.dir/src/game/player/client.c.o"
   "CMakeFiles/game.dir/src/game/player/client.c.o.d"
   "CMakeFiles/game.dir/src/game/player/hud.c.o"

@@ -369,6 +369,8 @@ set(Game-Source
 	${GAME_SRC_DIR}/monster/soldier/soldier.c
 	${GAME_SRC_DIR}/monster/supertank/supertank.c
 	${GAME_SRC_DIR}/monster/tank/tank.c
+	# new monster
+	${GAME_SRC_DIR}/monster/tower_sap/tower_sap.c
 	${GAME_SRC_DIR}/player/client.c
 	${GAME_SRC_DIR}/player/hud.c
 	${GAME_SRC_DIR}/player/trail.c
@@ -401,6 +403,8 @@ set(Game-Header
 	${GAME_SRC_DIR}/monster/soldier/soldier.h
 	${GAME_SRC_DIR}/monster/supertank/supertank.h
 	${GAME_SRC_DIR}/monster/tank/tank.h
+	# new monster
+	${GAME_SRC_DIR}/monster/tower_sap/tower_sap.h
 	${GAME_SRC_DIR}/savegame/tables/clientfields.h
 	${GAME_SRC_DIR}/savegame/tables/fields.h
 	${GAME_SRC_DIR}/savegame/tables/gamefunc_decs.h

@@ -27,7 +27,7 @@
 #include "header/local.h"
 
 void
-SP_monster_berserk(edict_t *self);
+SP_monster_tower_sap(edict_t *self);
 
 /*
  * This is a support routine used when a client is firing
@@ -598,9 +598,11 @@ Grenade_Explode(edict_t *ent)
 
 	test_entity = G_Spawn();
 	VectorCopy(ent->s.origin, test_entity->s.origin);
-	SP_monster_berserk(test_entity);
+	const float offset[3] = {0, 0, 50};
+	VectorAdd(test_entity->s.origin, offset, test_entity->s.origin);
+	SP_monster_tower_sap(test_entity);
 
-	test_entity->monsterinfo.aiflags += AI_GOOD_GUY;
+	//test_entity->monsterinfo.aiflags += AI_GOOD_GUY;
 	G_FreeEdict(ent);
 }
 

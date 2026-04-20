@@ -1,4 +1,5 @@
 file(REMOVE_RECURSE
+  "CMakeFiles/ref_gl3.dir/link.d"
   "CMakeFiles/ref_gl3.dir/src/backends/unix/shared/hunk.c.o"
   "CMakeFiles/ref_gl3.dir/src/backends/unix/shared/hunk.c.o.d"
   "CMakeFiles/ref_gl3.dir/src/client/refresh/files/models.c.o"

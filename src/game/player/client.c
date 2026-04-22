@@ -1875,6 +1875,8 @@ ClientBegin(edict_t *ent)
 		}
 	}
 
+	ent->monsterinfo.aiflags |= AI_INVADER;
+
 	/* make sure all view stuff is valid */
 	ClientEndServerFrame(ent);
 }

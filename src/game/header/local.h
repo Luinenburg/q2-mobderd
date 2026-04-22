@@ -146,7 +146,8 @@ typedef enum
 #define AI_MEDIC 0x00002000
 #define AI_RESURRECTING 0x00004000
 #define AI_TOWER 0x00008000
-#define AI_CORE = 0x00010000
+#define AI_CORE 0x00010000
+#define AI_INVADER 0x00020000
 
 /* monster attack state */
 #define AS_STRAIGHT 1

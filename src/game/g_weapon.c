@@ -602,7 +602,6 @@ Grenade_Explode(edict_t *ent)
 	VectorAdd(test_entity->s.origin, offset, test_entity->s.origin);
 	SP_monster_tower_sap(test_entity);
 
-	//test_entity->monsterinfo.aiflags += AI_GOOD_GUY;
 	G_FreeEdict(ent);
 }
 

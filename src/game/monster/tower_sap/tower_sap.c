@@ -40,10 +40,6 @@ static int sound_scratch;
 static int sound_search;
 
 void tower_sap_stand(edict_t *self);
-void tower_sap_start_run(edict_t *self);
-void tower_sap_run(edict_t *self);
-void tower_sap_walk(edict_t *self);
-void tower_sap_start_walk(edict_t *self);
 void tower_sap_end_fidget(edict_t *self);
 void tower_sap_do_fidget(edict_t *self);
 void tower_sap_refidget(edict_t *self);
@@ -250,7 +246,7 @@ mmove_t tower_sap_move_stand =
 	FRAME_stand01,
 	FRAME_stand17,
    	tower_sap_frames_stand,
-   	tower_sap_stand
+	tower_sap_stand
 };
 
 void
@@ -264,218 +260,11 @@ tower_sap_stand(edict_t *self)
 	self->monsterinfo.currentmove = &tower_sap_move_stand;
 }
 
-static mframe_t tower_sap_frames_run[] = {
-	{ai_run, 30, NULL},
-	{ai_run, 30, NULL},
-	{ai_run, 22, tower_sap_footstep},
-	{ai_run, 19, tower_sap_footstep},
-	{ai_run, 24, NULL},
-	{ai_run, 28, tower_sap_footstep},
-	{ai_run, 25, NULL}
-};
-
-mmove_t tower_sap_move_run =
-{
-	FRAME_run03,
-	FRAME_run09,
-	tower_sap_frames_run,
-	NULL
-};
-
-static mframe_t tower_sap_frames_start_run[] = {
-	{ai_run, 0, NULL},
-	{ai_run, 30, NULL},
-};
-
-mmove_t tower_sap_move_start_run =
-{
-	FRAME_run01,
-	FRAME_run02,
-   	tower_sap_frames_start_run,
-   	tower_sap_run
-};
-
-static mframe_t tower_sap_frames_stop_run[] = {
-	{ai_run, 20, NULL},
-	{ai_run, 20, NULL},
-	{ai_run, 12, tower_sap_footstep},
-	{ai_run, 10, NULL},
-	{ai_run, 0, NULL},
-	{ai_run, 0, NULL}
-};
-
-mmove_t tower_sap_move_stop_run =
-{
-	FRAME_run10,
-	FRAME_run15,
-	tower_sap_frames_stop_run,
-	NULL
-};
-
-void
-tower_sap_start_run(edict_t *self)
-{
-	if (!self)
-	{
-		return;
-	}
-
-	if (self->monsterinfo.aiflags & AI_STAND_GROUND)
-	{
-		self->monsterinfo.currentmove = &tower_sap_move_stand;
-	}
-	else
-	{
-		self->monsterinfo.currentmove = &tower_sap_move_start_run;
-	}
-}
-
-void
-tower_sap_run(edict_t *self)
-{
-	if (!self)
-	{
-		return;
-	}
-
-	if (self->monsterinfo.aiflags & AI_STAND_GROUND)
-	{
-		self->monsterinfo.currentmove = &tower_sap_move_stand;
-	}
-	else
-	{
-		self->monsterinfo.currentmove = &tower_sap_move_run;
-	}
-}
-
-static mframe_t tower_sap_frames_walk[] = {
-	{ai_walk, 30, NULL},
-	{ai_walk, 30, NULL},
-	{ai_walk, 22, tower_sap_footstep},
-	{ai_walk, 19, NULL},
-	{ai_walk, 24, tower_sap_footstep},
-	{ai_walk, 28, tower_sap_footstep},
-	{ai_walk, 25, NULL}
-};
-
-mmove_t tower_sap_move_walk =
-{
-	FRAME_run03,
-	FRAME_run09,
-	tower_sap_frames_walk,
-	tower_sap_walk
-};
-
-static mframe_t tower_sap_frames_start_walk[] = {
-	{ai_walk, 0, NULL},
-	{ai_walk, 30, tower_sap_walk}
-};
-
-mmove_t tower_sap_move_start_walk =
-{
-	FRAME_run01,
-	FRAME_run02,
-   	tower_sap_frames_start_walk,
-   	NULL
-};
-
-static mframe_t tower_sap_frames_stop_walk[] = {
-	{ai_walk, 20, NULL},
-	{ai_walk, 20, NULL},
-	{ai_walk, 12, tower_sap_footstep},
-	{ai_walk, 10, NULL},
-	{ai_walk, 0, NULL},
-	{ai_walk, 0, NULL}
-};
-
-mmove_t tower_sap_move_stop_walk =
-{
-	FRAME_run10,
-   	FRAME_run15,
-   	tower_sap_frames_stop_walk,
-   	NULL
-};
-
-void
-tower_sap_start_walk(edict_t *self)
-{
-	if (!self)
-	{
-		return;
-	}
-
-	self->monsterinfo.currentmove = &tower_sap_move_start_walk;
-}
-
-void
-tower_sap_walk(edict_t *self)
-{
-	if (!self)
-	{
-		return;
-	}
-
-	self->monsterinfo.currentmove = &tower_sap_move_walk;
-}
-
-static mframe_t tower_sap_frames_pain1[] = {
-	{ai_move, 0, NULL},
-	{ai_move, 0, NULL},
-	{ai_move, 0, NULL},
-	{ai_move, 0, NULL},
-	{ai_move, 0, NULL},
-	{ai_move, 0, NULL},
-	{ai_move, 6, NULL},
-	{ai_move, 16, NULL},
-	{ai_move, -6, NULL},
-	{ai_move, -7, NULL},
-	{ai_move, 0, NULL}
-};
-
-mmove_t tower_sap_move_pain1 =
-{
-	FRAME_pain101,
-	FRAME_pain111,
-   	tower_sap_frames_pain1,
-   	tower_sap_start_run
-};
-
 void
 tower_sap_pain(edict_t *self, edict_t *other /* unused */,
 	   	float kick /* unused */, int damage /* unused */)
 {
-	if (!self)
-	{
-		return;
-	}
-
-	if (self->health < (self->max_health / 2))
-	{
-		self->s.skinnum = 1;
-	}
-
-	if (level.time < self->pain_debounce_time)
-	{
-		return;
-	}
-
-	self->pain_debounce_time = level.time + 3;
-
-	if (skill->value == SKILL_HARDPLUS)
-	{
-		return; /* no pain anims in nightmare */
-	}
-
-	if (random() < 0.5)
-	{
-		gi.sound(self, CHAN_VOICE, sound_pain1, 1, ATTN_NORM, 0);
-	}
-	else
-	{
-		gi.sound(self, CHAN_VOICE, sound_pain2, 1, ATTN_NORM, 0);
-	}
-
-	self->monsterinfo.currentmove = &tower_sap_move_pain1;
+	return;
 }
 
 qboolean
@@ -523,8 +312,11 @@ tower_sap_drain_attack(edict_t *self)
 	VectorSet(offset, 24, 0, 6);
 	G_ProjectSource(self->s.origin, offset, f, r, start);
 
-	if (!self->enemy)
+	if (!self->enemy || !(self->enemy->monsterinfo.aiflags & AI_INVADER))
 	{
+		if (self->enemy) gi.cprintf(self->enemy, PRINT_HIGH, "balls");
+		self->enemy = NULL;
+		tower_sap_stand(self);
 		return;
 	}
 
@@ -584,21 +376,21 @@ tower_sap_drain_attack(edict_t *self)
 static mframe_t tower_sap_frames_drain[] = {
 	{ai_charge, 0, tower_sap_launch},
 	{ai_charge, 0, NULL},
-	{ai_charge, 15, tower_sap_drain_attack}, /* Target hits */
+	{ai_charge, 0, tower_sap_drain_attack}, /* Target hits */
 	{ai_charge, 0, tower_sap_drain_attack}, /* drain */
 	{ai_charge, 0, tower_sap_drain_attack}, /* drain */
 	{ai_charge, 0, tower_sap_drain_attack}, /* drain */
 	{ai_charge, 0, tower_sap_drain_attack}, /* drain */
-	{ai_charge, -2, tower_sap_drain_attack}, /* drain */
-	{ai_charge, -2, tower_sap_drain_attack}, /* drain */
-	{ai_charge, -3, tower_sap_drain_attack}, /* drain */
-	{ai_charge, -2, tower_sap_drain_attack}, /* drain */
 	{ai_charge, 0, tower_sap_drain_attack}, /* drain */
-	{ai_charge, -1, tower_sap_drain_attack}, /* drain */
+	{ai_charge, 0, tower_sap_drain_attack}, /* drain */
+	{ai_charge, 0, tower_sap_drain_attack}, /* drain */
+	{ai_charge, 0, tower_sap_drain_attack}, /* drain */
+	{ai_charge, 0, tower_sap_drain_attack}, /* drain */
+	{ai_charge, 0, tower_sap_drain_attack}, /* drain */
 	{ai_charge, 0, tower_sap_reel_in}, /* let go */
-	{ai_charge, -2, NULL},
-	{ai_charge, -2, NULL},
-	{ai_charge, -3, NULL},
+	{ai_charge, 0, NULL},
+	{ai_charge, 0, NULL},
+	{ai_charge, 0, NULL},
 	{ai_charge, 0, NULL}
 };
 
@@ -608,49 +400,6 @@ mmove_t tower_sap_move_drain =
    	FRAME_drain18,
    	tower_sap_frames_drain,
    	tower_sap_drain_attack
-};
-
-static mframe_t tower_sap_frames_break[] = {
-	{ai_charge, 0, NULL},
-	{ai_charge, -3, NULL},
-	{ai_charge, 1, NULL},
-	{ai_charge, 2, NULL},
-	{ai_charge, -3, NULL},
-	{ai_charge, 1, NULL},
-	{ai_charge, 1, NULL},
-	{ai_charge, 3, NULL},
-	{ai_charge, 0, NULL},
-	{ai_charge, -18, NULL},
-	{ai_charge, 3, NULL},
-	{ai_charge, 9, NULL},
-	{ai_charge, 6, NULL},
-	{ai_charge, 0, NULL},
-	{ai_charge, -18, NULL},
-	{ai_charge, 0, NULL},
-	{ai_charge, 8, NULL},
-	{ai_charge, 9, NULL},
-	{ai_charge, 0, NULL},
-	{ai_charge, -18, NULL},
-	{ai_charge, 0, NULL},
-	{ai_charge, 0, NULL}, /* airborne */
-	{ai_charge, 0, NULL}, /* airborne */
-	{ai_charge, 0, NULL}, /* slides */
-	{ai_charge, 0, NULL}, /* slides */
-	{ai_charge, 0, NULL}, /* slides */
-	{ai_charge, 0, NULL}, /* slides */
-	{ai_charge, 4, NULL},
-	{ai_charge, 11, NULL},
-	{ai_charge, -2, NULL},
-	{ai_charge, -5, NULL},
-	{ai_charge, 1, NULL}
-};
-
-mmove_t tower_sap_move_break =
-{
-	FRAME_break01,
-	FRAME_break32,
-	tower_sap_frames_break,
-   	tower_sap_start_run
 };
 
 void
@@ -777,18 +526,21 @@ SP_monster_tower_sap(edict_t *self)
 	self->pain = tower_sap_pain;
 	self->die = tower_sap_die;
 
-	self->monsterinfo.stand = tower_sap_stand;
+	self->monsterinfo.stand = tower_sap_attack;
 	self->monsterinfo.walk = tower_sap_attack;
 	self->monsterinfo.run = tower_sap_attack;
 	self->monsterinfo.attack = tower_sap_attack;
 	self->monsterinfo.sight = tower_sap_sight;
-	self->monsterinfo.idle = tower_sap_idle;
+	self->monsterinfo.idle = tower_sap_attack;
 
 	gi.linkentity(self);
 
 	self->monsterinfo.currentmove = &tower_sap_move_stand;
 	self->monsterinfo.scale = MODEL_SCALE;
-	self->monsterinfo.aiflags += AI_GOOD_GUY;
+
+	//self->monsterinfo.aiflags |= AI_GOOD_GUY;
+	self->monsterinfo.aiflags |= AI_TOWER;
+	self->flags |= FL_NO_KNOCKBACK;
 
 	walkmonster_start(self);
 }

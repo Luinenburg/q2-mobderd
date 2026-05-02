@@ -1768,6 +1768,7 @@ PutClientInServer(edict_t *ent)
 	/* force the current weapon up */
 	client->newweapon = client->pers.weapon;
 	ChangeWeapon(ent);
+
 }
 
 /*
@@ -1804,6 +1805,17 @@ ClientBeginDeathmatch(edict_t *ent)
 	}
 
 	gi.bprintf(PRINT_HIGH, "%s entered the game\n", ent->client->pers.netname);
+
+	ent->monsterinfo.aiflags |= AI_DEFENDER;
+
+	ent->towers[TOWER_AOE] = 0;
+	ent->towers[TOWER_CURRENCY] = 0;
+	ent->towers[TOWER_GUN] = 0;
+	ent->towers[TOWER_SAP] = 2;
+	ent->towers[TOWER_SPAWN] = 0;
+
+	ent->currency = 20;
+    ent->current_tower = TOWER_CURRENCY;
 
 	/* make sure all view stuff is valid */
 	ClientEndServerFrame(ent);
@@ -1874,8 +1886,6 @@ ClientBegin(edict_t *ent)
 					ent->client->pers.netname);
 		}
 	}
-
-	ent->monsterinfo.aiflags |= AI_INVADER;
 
 	/* make sure all view stuff is valid */
 	ClientEndServerFrame(ent);

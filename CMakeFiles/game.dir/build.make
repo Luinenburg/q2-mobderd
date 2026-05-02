@@ -671,10 +671,66 @@ CMakeFiles/game.dir/src/game/monster/tower_sap/tower_sap.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/game.dir/src/game/monster/tower_sap/tower_sap.c.s"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/soap/git/q2-mobderd/src/game/monster/tower_sap/tower_sap.c -o CMakeFiles/game.dir/src/game/monster/tower_sap/tower_sap.c.s
 
+CMakeFiles/game.dir/src/game/monster/tower_aoe/tower_aoe.c.o: CMakeFiles/game.dir/flags.make
+CMakeFiles/game.dir/src/game/monster/tower_aoe/tower_aoe.c.o: src/game/monster/tower_aoe/tower_aoe.c
+CMakeFiles/game.dir/src/game/monster/tower_aoe/tower_aoe.c.o: CMakeFiles/game.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_44) "Building C object CMakeFiles/game.dir/src/game/monster/tower_aoe/tower_aoe.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/game.dir/src/game/monster/tower_aoe/tower_aoe.c.o -MF CMakeFiles/game.dir/src/game/monster/tower_aoe/tower_aoe.c.o.d -o CMakeFiles/game.dir/src/game/monster/tower_aoe/tower_aoe.c.o -c /home/soap/git/q2-mobderd/src/game/monster/tower_aoe/tower_aoe.c
+
+CMakeFiles/game.dir/src/game/monster/tower_aoe/tower_aoe.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/game.dir/src/game/monster/tower_aoe/tower_aoe.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/soap/git/q2-mobderd/src/game/monster/tower_aoe/tower_aoe.c > CMakeFiles/game.dir/src/game/monster/tower_aoe/tower_aoe.c.i
+
+CMakeFiles/game.dir/src/game/monster/tower_aoe/tower_aoe.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/game.dir/src/game/monster/tower_aoe/tower_aoe.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/soap/git/q2-mobderd/src/game/monster/tower_aoe/tower_aoe.c -o CMakeFiles/game.dir/src/game/monster/tower_aoe/tower_aoe.c.s
+
+CMakeFiles/game.dir/src/game/monster/tower_currency/tower_currency.c.o: CMakeFiles/game.dir/flags.make
+CMakeFiles/game.dir/src/game/monster/tower_currency/tower_currency.c.o: src/game/monster/tower_currency/tower_currency.c
+CMakeFiles/game.dir/src/game/monster/tower_currency/tower_currency.c.o: CMakeFiles/game.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_45) "Building C object CMakeFiles/game.dir/src/game/monster/tower_currency/tower_currency.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/game.dir/src/game/monster/tower_currency/tower_currency.c.o -MF CMakeFiles/game.dir/src/game/monster/tower_currency/tower_currency.c.o.d -o CMakeFiles/game.dir/src/game/monster/tower_currency/tower_currency.c.o -c /home/soap/git/q2-mobderd/src/game/monster/tower_currency/tower_currency.c
+
+CMakeFiles/game.dir/src/game/monster/tower_currency/tower_currency.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/game.dir/src/game/monster/tower_currency/tower_currency.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/soap/git/q2-mobderd/src/game/monster/tower_currency/tower_currency.c > CMakeFiles/game.dir/src/game/monster/tower_currency/tower_currency.c.i
+
+CMakeFiles/game.dir/src/game/monster/tower_currency/tower_currency.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/game.dir/src/game/monster/tower_currency/tower_currency.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/soap/git/q2-mobderd/src/game/monster/tower_currency/tower_currency.c -o CMakeFiles/game.dir/src/game/monster/tower_currency/tower_currency.c.s
+
+CMakeFiles/game.dir/src/game/monster/tower_gunner/tower_gunner.c.o: CMakeFiles/game.dir/flags.make
+CMakeFiles/game.dir/src/game/monster/tower_gunner/tower_gunner.c.o: src/game/monster/tower_gunner/tower_gunner.c
+CMakeFiles/game.dir/src/game/monster/tower_gunner/tower_gunner.c.o: CMakeFiles/game.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_46) "Building C object CMakeFiles/game.dir/src/game/monster/tower_gunner/tower_gunner.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/game.dir/src/game/monster/tower_gunner/tower_gunner.c.o -MF CMakeFiles/game.dir/src/game/monster/tower_gunner/tower_gunner.c.o.d -o CMakeFiles/game.dir/src/game/monster/tower_gunner/tower_gunner.c.o -c /home/soap/git/q2-mobderd/src/game/monster/tower_gunner/tower_gunner.c
+
+CMakeFiles/game.dir/src/game/monster/tower_gunner/tower_gunner.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/game.dir/src/game/monster/tower_gunner/tower_gunner.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/soap/git/q2-mobderd/src/game/monster/tower_gunner/tower_gunner.c > CMakeFiles/game.dir/src/game/monster/tower_gunner/tower_gunner.c.i
+
+CMakeFiles/game.dir/src/game/monster/tower_gunner/tower_gunner.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/game.dir/src/game/monster/tower_gunner/tower_gunner.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/soap/git/q2-mobderd/src/game/monster/tower_gunner/tower_gunner.c -o CMakeFiles/game.dir/src/game/monster/tower_gunner/tower_gunner.c.s
+
+CMakeFiles/game.dir/src/game/monster/tower_spawner/tower_spawner.c.o: CMakeFiles/game.dir/flags.make
+CMakeFiles/game.dir/src/game/monster/tower_spawner/tower_spawner.c.o: src/game/monster/tower_spawner/tower_spawner.c
+CMakeFiles/game.dir/src/game/monster/tower_spawner/tower_spawner.c.o: CMakeFiles/game.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_47) "Building C object CMakeFiles/game.dir/src/game/monster/tower_spawner/tower_spawner.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/game.dir/src/game/monster/tower_spawner/tower_spawner.c.o -MF CMakeFiles/game.dir/src/game/monster/tower_spawner/tower_spawner.c.o.d -o CMakeFiles/game.dir/src/game/monster/tower_spawner/tower_spawner.c.o -c /home/soap/git/q2-mobderd/src/game/monster/tower_spawner/tower_spawner.c
+
+CMakeFiles/game.dir/src/game/monster/tower_spawner/tower_spawner.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/game.dir/src/game/monster/tower_spawner/tower_spawner.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/soap/git/q2-mobderd/src/game/monster/tower_spawner/tower_spawner.c > CMakeFiles/game.dir/src/game/monster/tower_spawner/tower_spawner.c.i
+
+CMakeFiles/game.dir/src/game/monster/tower_spawner/tower_spawner.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/game.dir/src/game/monster/tower_spawner/tower_spawner.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/soap/git/q2-mobderd/src/game/monster/tower_spawner/tower_spawner.c -o CMakeFiles/game.dir/src/game/monster/tower_spawner/tower_spawner.c.s
+
 CMakeFiles/game.dir/src/game/player/client.c.o: CMakeFiles/game.dir/flags.make
 CMakeFiles/game.dir/src/game/player/client.c.o: src/game/player/client.c
 CMakeFiles/game.dir/src/game/player/client.c.o: CMakeFiles/game.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_44) "Building C object CMakeFiles/game.dir/src/game/player/client.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_48) "Building C object CMakeFiles/game.dir/src/game/player/client.c.o"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/game.dir/src/game/player/client.c.o -MF CMakeFiles/game.dir/src/game/player/client.c.o.d -o CMakeFiles/game.dir/src/game/player/client.c.o -c /home/soap/git/q2-mobderd/src/game/player/client.c
 
 CMakeFiles/game.dir/src/game/player/client.c.i: cmake_force
@@ -688,7 +744,7 @@ CMakeFiles/game.dir/src/game/player/client.c.s: cmake_force
 CMakeFiles/game.dir/src/game/player/hud.c.o: CMakeFiles/game.dir/flags.make
 CMakeFiles/game.dir/src/game/player/hud.c.o: src/game/player/hud.c
 CMakeFiles/game.dir/src/game/player/hud.c.o: CMakeFiles/game.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_45) "Building C object CMakeFiles/game.dir/src/game/player/hud.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_49) "Building C object CMakeFiles/game.dir/src/game/player/hud.c.o"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/game.dir/src/game/player/hud.c.o -MF CMakeFiles/game.dir/src/game/player/hud.c.o.d -o CMakeFiles/game.dir/src/game/player/hud.c.o -c /home/soap/git/q2-mobderd/src/game/player/hud.c
 
 CMakeFiles/game.dir/src/game/player/hud.c.i: cmake_force
@@ -702,7 +758,7 @@ CMakeFiles/game.dir/src/game/player/hud.c.s: cmake_force
 CMakeFiles/game.dir/src/game/player/trail.c.o: CMakeFiles/game.dir/flags.make
 CMakeFiles/game.dir/src/game/player/trail.c.o: src/game/player/trail.c
 CMakeFiles/game.dir/src/game/player/trail.c.o: CMakeFiles/game.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_46) "Building C object CMakeFiles/game.dir/src/game/player/trail.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_50) "Building C object CMakeFiles/game.dir/src/game/player/trail.c.o"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/game.dir/src/game/player/trail.c.o -MF CMakeFiles/game.dir/src/game/player/trail.c.o.d -o CMakeFiles/game.dir/src/game/player/trail.c.o -c /home/soap/git/q2-mobderd/src/game/player/trail.c
 
 CMakeFiles/game.dir/src/game/player/trail.c.i: cmake_force
@@ -716,7 +772,7 @@ CMakeFiles/game.dir/src/game/player/trail.c.s: cmake_force
 CMakeFiles/game.dir/src/game/player/view.c.o: CMakeFiles/game.dir/flags.make
 CMakeFiles/game.dir/src/game/player/view.c.o: src/game/player/view.c
 CMakeFiles/game.dir/src/game/player/view.c.o: CMakeFiles/game.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_47) "Building C object CMakeFiles/game.dir/src/game/player/view.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_51) "Building C object CMakeFiles/game.dir/src/game/player/view.c.o"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/game.dir/src/game/player/view.c.o -MF CMakeFiles/game.dir/src/game/player/view.c.o.d -o CMakeFiles/game.dir/src/game/player/view.c.o -c /home/soap/git/q2-mobderd/src/game/player/view.c
 
 CMakeFiles/game.dir/src/game/player/view.c.i: cmake_force
@@ -730,7 +786,7 @@ CMakeFiles/game.dir/src/game/player/view.c.s: cmake_force
 CMakeFiles/game.dir/src/game/player/weapon.c.o: CMakeFiles/game.dir/flags.make
 CMakeFiles/game.dir/src/game/player/weapon.c.o: src/game/player/weapon.c
 CMakeFiles/game.dir/src/game/player/weapon.c.o: CMakeFiles/game.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_48) "Building C object CMakeFiles/game.dir/src/game/player/weapon.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_52) "Building C object CMakeFiles/game.dir/src/game/player/weapon.c.o"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/game.dir/src/game/player/weapon.c.o -MF CMakeFiles/game.dir/src/game/player/weapon.c.o.d -o CMakeFiles/game.dir/src/game/player/weapon.c.o -c /home/soap/git/q2-mobderd/src/game/player/weapon.c
 
 CMakeFiles/game.dir/src/game/player/weapon.c.i: cmake_force
@@ -744,7 +800,7 @@ CMakeFiles/game.dir/src/game/player/weapon.c.s: cmake_force
 CMakeFiles/game.dir/src/game/savegame/savegame.c.o: CMakeFiles/game.dir/flags.make
 CMakeFiles/game.dir/src/game/savegame/savegame.c.o: src/game/savegame/savegame.c
 CMakeFiles/game.dir/src/game/savegame/savegame.c.o: CMakeFiles/game.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_49) "Building C object CMakeFiles/game.dir/src/game/savegame/savegame.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_53) "Building C object CMakeFiles/game.dir/src/game/savegame/savegame.c.o"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/game.dir/src/game/savegame/savegame.c.o -MF CMakeFiles/game.dir/src/game/savegame/savegame.c.o.d -o CMakeFiles/game.dir/src/game/savegame/savegame.c.o -c /home/soap/git/q2-mobderd/src/game/savegame/savegame.c
 
 CMakeFiles/game.dir/src/game/savegame/savegame.c.i: cmake_force
@@ -800,6 +856,10 @@ game_OBJECTS = \
 "CMakeFiles/game.dir/src/game/monster/supertank/supertank.c.o" \
 "CMakeFiles/game.dir/src/game/monster/tank/tank.c.o" \
 "CMakeFiles/game.dir/src/game/monster/tower_sap/tower_sap.c.o" \
+"CMakeFiles/game.dir/src/game/monster/tower_aoe/tower_aoe.c.o" \
+"CMakeFiles/game.dir/src/game/monster/tower_currency/tower_currency.c.o" \
+"CMakeFiles/game.dir/src/game/monster/tower_gunner/tower_gunner.c.o" \
+"CMakeFiles/game.dir/src/game/monster/tower_spawner/tower_spawner.c.o" \
 "CMakeFiles/game.dir/src/game/player/client.c.o" \
 "CMakeFiles/game.dir/src/game/player/hud.c.o" \
 "CMakeFiles/game.dir/src/game/player/trail.c.o" \
@@ -853,6 +913,10 @@ release/baseq2/game.so: CMakeFiles/game.dir/src/game/monster/soldier/soldier.c.o
 release/baseq2/game.so: CMakeFiles/game.dir/src/game/monster/supertank/supertank.c.o
 release/baseq2/game.so: CMakeFiles/game.dir/src/game/monster/tank/tank.c.o
 release/baseq2/game.so: CMakeFiles/game.dir/src/game/monster/tower_sap/tower_sap.c.o
+release/baseq2/game.so: CMakeFiles/game.dir/src/game/monster/tower_aoe/tower_aoe.c.o
+release/baseq2/game.so: CMakeFiles/game.dir/src/game/monster/tower_currency/tower_currency.c.o
+release/baseq2/game.so: CMakeFiles/game.dir/src/game/monster/tower_gunner/tower_gunner.c.o
+release/baseq2/game.so: CMakeFiles/game.dir/src/game/monster/tower_spawner/tower_spawner.c.o
 release/baseq2/game.so: CMakeFiles/game.dir/src/game/player/client.c.o
 release/baseq2/game.so: CMakeFiles/game.dir/src/game/player/hud.c.o
 release/baseq2/game.so: CMakeFiles/game.dir/src/game/player/trail.c.o
@@ -861,7 +925,7 @@ release/baseq2/game.so: CMakeFiles/game.dir/src/game/player/weapon.c.o
 release/baseq2/game.so: CMakeFiles/game.dir/src/game/savegame/savegame.c.o
 release/baseq2/game.so: CMakeFiles/game.dir/build.make
 release/baseq2/game.so: CMakeFiles/game.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_50) "Linking C shared module release/baseq2/game.so"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=$(CMAKE_PROGRESS_54) "Linking C shared module release/baseq2/game.so"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/game.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

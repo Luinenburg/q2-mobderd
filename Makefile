@@ -3948,6 +3948,78 @@ src/game/monster/tank/tank.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/tank/tank.c.s
 .PHONY : src/game/monster/tank/tank.c.s
 
+src/game/monster/tower_aoe/tower_aoe.o: src/game/monster/tower_aoe/tower_aoe.c.o
+.PHONY : src/game/monster/tower_aoe/tower_aoe.o
+
+# target to build an object file
+src/game/monster/tower_aoe/tower_aoe.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/tower_aoe/tower_aoe.c.o
+.PHONY : src/game/monster/tower_aoe/tower_aoe.c.o
+
+src/game/monster/tower_aoe/tower_aoe.i: src/game/monster/tower_aoe/tower_aoe.c.i
+.PHONY : src/game/monster/tower_aoe/tower_aoe.i
+
+# target to preprocess a source file
+src/game/monster/tower_aoe/tower_aoe.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/tower_aoe/tower_aoe.c.i
+.PHONY : src/game/monster/tower_aoe/tower_aoe.c.i
+
+src/game/monster/tower_aoe/tower_aoe.s: src/game/monster/tower_aoe/tower_aoe.c.s
+.PHONY : src/game/monster/tower_aoe/tower_aoe.s
+
+# target to generate assembly for a file
+src/game/monster/tower_aoe/tower_aoe.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/tower_aoe/tower_aoe.c.s
+.PHONY : src/game/monster/tower_aoe/tower_aoe.c.s
+
+src/game/monster/tower_currency/tower_currency.o: src/game/monster/tower_currency/tower_currency.c.o
+.PHONY : src/game/monster/tower_currency/tower_currency.o
+
+# target to build an object file
+src/game/monster/tower_currency/tower_currency.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/tower_currency/tower_currency.c.o
+.PHONY : src/game/monster/tower_currency/tower_currency.c.o
+
+src/game/monster/tower_currency/tower_currency.i: src/game/monster/tower_currency/tower_currency.c.i
+.PHONY : src/game/monster/tower_currency/tower_currency.i
+
+# target to preprocess a source file
+src/game/monster/tower_currency/tower_currency.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/tower_currency/tower_currency.c.i
+.PHONY : src/game/monster/tower_currency/tower_currency.c.i
+
+src/game/monster/tower_currency/tower_currency.s: src/game/monster/tower_currency/tower_currency.c.s
+.PHONY : src/game/monster/tower_currency/tower_currency.s
+
+# target to generate assembly for a file
+src/game/monster/tower_currency/tower_currency.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/tower_currency/tower_currency.c.s
+.PHONY : src/game/monster/tower_currency/tower_currency.c.s
+
+src/game/monster/tower_gunner/tower_gunner.o: src/game/monster/tower_gunner/tower_gunner.c.o
+.PHONY : src/game/monster/tower_gunner/tower_gunner.o
+
+# target to build an object file
+src/game/monster/tower_gunner/tower_gunner.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/tower_gunner/tower_gunner.c.o
+.PHONY : src/game/monster/tower_gunner/tower_gunner.c.o
+
+src/game/monster/tower_gunner/tower_gunner.i: src/game/monster/tower_gunner/tower_gunner.c.i
+.PHONY : src/game/monster/tower_gunner/tower_gunner.i
+
+# target to preprocess a source file
+src/game/monster/tower_gunner/tower_gunner.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/tower_gunner/tower_gunner.c.i
+.PHONY : src/game/monster/tower_gunner/tower_gunner.c.i
+
+src/game/monster/tower_gunner/tower_gunner.s: src/game/monster/tower_gunner/tower_gunner.c.s
+.PHONY : src/game/monster/tower_gunner/tower_gunner.s
+
+# target to generate assembly for a file
+src/game/monster/tower_gunner/tower_gunner.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/tower_gunner/tower_gunner.c.s
+.PHONY : src/game/monster/tower_gunner/tower_gunner.c.s
+
 src/game/monster/tower_sap/tower_sap.o: src/game/monster/tower_sap/tower_sap.c.o
 .PHONY : src/game/monster/tower_sap/tower_sap.o
 
@@ -3971,6 +4043,30 @@ src/game/monster/tower_sap/tower_sap.s: src/game/monster/tower_sap/tower_sap.c.s
 src/game/monster/tower_sap/tower_sap.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/tower_sap/tower_sap.c.s
 .PHONY : src/game/monster/tower_sap/tower_sap.c.s
+
+src/game/monster/tower_spawner/tower_spawner.o: src/game/monster/tower_spawner/tower_spawner.c.o
+.PHONY : src/game/monster/tower_spawner/tower_spawner.o
+
+# target to build an object file
+src/game/monster/tower_spawner/tower_spawner.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/tower_spawner/tower_spawner.c.o
+.PHONY : src/game/monster/tower_spawner/tower_spawner.c.o
+
+src/game/monster/tower_spawner/tower_spawner.i: src/game/monster/tower_spawner/tower_spawner.c.i
+.PHONY : src/game/monster/tower_spawner/tower_spawner.i
+
+# target to preprocess a source file
+src/game/monster/tower_spawner/tower_spawner.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/tower_spawner/tower_spawner.c.i
+.PHONY : src/game/monster/tower_spawner/tower_spawner.c.i
+
+src/game/monster/tower_spawner/tower_spawner.s: src/game/monster/tower_spawner/tower_spawner.c.s
+.PHONY : src/game/monster/tower_spawner/tower_spawner.s
+
+# target to generate assembly for a file
+src/game/monster/tower_spawner/tower_spawner.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game/monster/tower_spawner/tower_spawner.c.s
+.PHONY : src/game/monster/tower_spawner/tower_spawner.c.s
 
 src/game/player/client.o: src/game/player/client.c.o
 .PHONY : src/game/player/client.o
@@ -4842,9 +4938,21 @@ help:
 	@echo "... src/game/monster/tank/tank.o"
 	@echo "... src/game/monster/tank/tank.i"
 	@echo "... src/game/monster/tank/tank.s"
+	@echo "... src/game/monster/tower_aoe/tower_aoe.o"
+	@echo "... src/game/monster/tower_aoe/tower_aoe.i"
+	@echo "... src/game/monster/tower_aoe/tower_aoe.s"
+	@echo "... src/game/monster/tower_currency/tower_currency.o"
+	@echo "... src/game/monster/tower_currency/tower_currency.i"
+	@echo "... src/game/monster/tower_currency/tower_currency.s"
+	@echo "... src/game/monster/tower_gunner/tower_gunner.o"
+	@echo "... src/game/monster/tower_gunner/tower_gunner.i"
+	@echo "... src/game/monster/tower_gunner/tower_gunner.s"
 	@echo "... src/game/monster/tower_sap/tower_sap.o"
 	@echo "... src/game/monster/tower_sap/tower_sap.i"
 	@echo "... src/game/monster/tower_sap/tower_sap.s"
+	@echo "... src/game/monster/tower_spawner/tower_spawner.o"
+	@echo "... src/game/monster/tower_spawner/tower_spawner.i"
+	@echo "... src/game/monster/tower_spawner/tower_spawner.s"
 	@echo "... src/game/player/client.o"
 	@echo "... src/game/player/client.i"
 	@echo "... src/game/player/client.s"

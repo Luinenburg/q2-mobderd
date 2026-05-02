@@ -42,6 +42,29 @@ CanDamage(edict_t *targ, edict_t *inflictor)
 		return false;
 	}
 
+    /*
+     * if we are on the same team, do not damage
+     */
+	int cond1 = (targ->monsterinfo.aiflags & AI_DEFENDER) > 0;
+	int cond2 = (inflictor->monsterinfo.aiflags & AI_DEFENDER) > 0;
+    if (cond1 == cond2) {
+        if (inflictor->client) {
+            gi.cprintf(inflictor, 0, "YOU CANT ATTACK ME\n");
+        	gi.cprintf(inflictor, 0, "Targ: %d, Inflictor: %d\n", cond1, cond2);
+        }
+        if (targ->client) {
+            gi.cprintf(targ, 0, "ME CANT ATTACK YOU");
+        	gi.cprintf(targ, 0, "Targ: %d, Inflictor: %d\n", cond1, cond2);
+        }
+        return false;
+    }
+	if (inflictor->client) {
+		gi.cprintf(inflictor, 0, "Targ: %d, Inflictor: %d\n", cond1, cond2);
+	}
+	if (targ->client) {
+		gi.cprintf(targ, 0, "Targ: %d, Inflictor: %d\n", cond1, cond2);
+	}
+
 	/* bmodels need special checking because their origin is 0,0,0 */
 	if (targ->movetype == MOVETYPE_PUSH)
 	{
@@ -415,6 +438,30 @@ M_ReactToDamage(edict_t *targ, edict_t *attacker)
 		}
 	}
 
+    /*
+     * if attack is a defender and we are a defender, do not attack
+     * Vice-versa, if we are an attacker and they are not, do not attack
+     */
+	int cond1 = (targ->monsterinfo.aiflags & AI_DEFENDER) > 0;
+	int cond2 = (attacker->monsterinfo.aiflags & AI_DEFENDER) > 0;
+	if (cond1 == cond2) {
+		if (attacker->client) {
+			gi.cprintf(attacker, 0, "YOU CANT ATTACK ME\n");
+			gi.cprintf(attacker, 0, "Targ: %d, Inflictor: %d\n", cond1, cond2);
+		}
+		if (targ->client) {
+			gi.cprintf(targ, 0, "ME CANT ATTACK YOU");
+			gi.cprintf(targ, 0, "Targ: %d, Inflictor: %d\n", cond1, cond2);
+		}
+		return;
+	}
+	if (attacker->client) {
+		gi.cprintf(attacker, 0, "Targ: %d, Inflictor: %d\n", cond1, cond2);
+	}
+	if (targ->client) {
+		gi.cprintf(targ, 0, "Targ: %d, Inflictor: %d\n", cond1, cond2);
+	}
+
 	/* if attacker is a client, get mad at
 	   them because he's good and we're not */
 	if (attacker->client)
@@ -535,6 +582,9 @@ T_Damage(edict_t *targ, edict_t *inflictor, edict_t *attacker,
 	{
 		return;
 	}
+
+	if (!CanDamage(targ, attacker)) return;
+	if (!CanDamage(targ, inflictor)) return;
 
 	if (!targ->takedamage)
 	{

@@ -93,7 +93,7 @@ clean: CMakeFiles/ref_soft.dir/clean
 CMakeFiles/quake2.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/quake2.dir/build.make CMakeFiles/quake2.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61 "Built target quake2"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62 "Built target quake2"
 .PHONY : CMakeFiles/quake2.dir/all
 
 # Build rule for subdir invocation for target.
@@ -119,12 +119,12 @@ CMakeFiles/quake2.dir/clean:
 CMakeFiles/q2ded.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/q2ded.dir/build.make CMakeFiles/q2ded.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=20,21,22,23,24,25,26,27,28,29,30,31,32,33,34 "Built target q2ded"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=22,23,24,25,26,27,28,29,30,31,32,33,34,35 "Built target q2ded"
 .PHONY : CMakeFiles/q2ded.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/q2ded.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/soap/git/q2-mobderd/CMakeFiles 15
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/soap/git/q2-mobderd/CMakeFiles 14
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/q2ded.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/soap/git/q2-mobderd/CMakeFiles 0
 .PHONY : CMakeFiles/q2ded.dir/rule
@@ -145,12 +145,12 @@ CMakeFiles/q2ded.dir/clean:
 CMakeFiles/game.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19 "Built target game"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21 "Built target game"
 .PHONY : CMakeFiles/game.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/game.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/soap/git/q2-mobderd/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/soap/git/q2-mobderd/CMakeFiles 21
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/game.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/soap/git/q2-mobderd/CMakeFiles 0
 .PHONY : CMakeFiles/game.dir/rule
@@ -171,12 +171,12 @@ CMakeFiles/game.dir/clean:
 CMakeFiles/ref_gl1.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ref_gl1.dir/build.make CMakeFiles/ref_gl1.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=62,63,64,65,66,67,68,69,70,71 "Built target ref_gl1"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/soap/git/q2-mobderd/CMakeFiles --progress-num=63,64,65,66,67,68,69,70,71 "Built target ref_gl1"
 .PHONY : CMakeFiles/ref_gl1.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/ref_gl1.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/soap/git/q2-mobderd/CMakeFiles 10
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/soap/git/q2-mobderd/CMakeFiles 9
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/ref_gl1.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/soap/git/q2-mobderd/CMakeFiles 0
 .PHONY : CMakeFiles/ref_gl1.dir/rule

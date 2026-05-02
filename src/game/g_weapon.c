@@ -26,6 +26,21 @@
 
 #include "header/local.h"
 
+void
+SP_monster_tower_sap(edict_t *self);
+
+void
+SP_monster_tower_aoe(edict_t *self);
+
+void
+SP_monster_tower_gunner(edict_t *self);
+
+void
+SP_monster_tower_currency(edict_t *self);
+
+void
+SP_monster_tower_spawner(edict_t *self);
+
 /*
  * This is a support routine used when a client is firing
  * a non-instant attack weapon.  It checks to see if a
@@ -596,6 +611,121 @@ Grenade_Explode(edict_t *ent)
 }
 
 void
+Grenade_Spawn(edict_t *ent)
+{
+    vec3_t origin;
+    int mod;
+    edict_t *tower;
+    int tower_type;
+
+    if (!ent)
+    {
+        return;
+    }
+    if (!(ent->owner && ent->owner->client)) {
+        return;
+    }
+
+    tower_type = ent->owner->current_tower;
+
+    if (ent->owner && ent->owner->client)
+    {
+        PlayerNoise(ent->owner, ent->s.origin, PNOISE_IMPACT);
+    }
+
+    if (ent->enemy)
+    {
+        float points;
+        vec3_t v;
+        vec3_t dir;
+
+        VectorAdd(ent->enemy->mins, ent->enemy->maxs, v);
+        VectorMA(ent->enemy->s.origin, 0.5, v, v);
+        VectorSubtract(ent->s.origin, v, v);
+        points = ent->dmg - 0.5 * VectorLength(v);
+        VectorSubtract(ent->enemy->s.origin, ent->s.origin, dir);
+
+        if (ent->spawnflags & 1)
+        {
+            mod = MOD_HANDGRENADE;
+        }
+        else
+        {
+            mod = MOD_GRENADE;
+        }
+    }
+
+    if (ent->spawnflags & 2)
+    {
+        mod = MOD_HELD_GRENADE;
+    }
+    else if (ent->spawnflags & 1)
+    {
+        mod = MOD_HG_SPLASH;
+    }
+    else
+    {
+        mod = MOD_G_SPLASH;
+    }
+
+    VectorMA(ent->s.origin, -0.02, ent->velocity, origin);
+    gi.WriteByte(svc_temp_entity);
+
+    if (ent->waterlevel)
+    {
+        if (ent->groundentity)
+        {
+            gi.WriteByte(TE_GRENADE_EXPLOSION_WATER);
+        }
+        else
+        {
+            gi.WriteByte(TE_ROCKET_EXPLOSION_WATER);
+        }
+    }
+    else
+    {
+        if (ent->groundentity)
+        {
+            gi.WriteByte(TE_GRENADE_EXPLOSION);
+        }
+        else
+        {
+            gi.WriteByte(TE_ROCKET_EXPLOSION);
+        }
+    }
+
+    gi.WritePosition(origin);
+    gi.multicast(ent->s.origin, MULTICAST_PHS);
+
+    tower = G_Spawn();
+    VectorCopy(ent->s.origin, tower->s.origin);
+    const float offset[3] = {0, 0, 50};
+    VectorAdd(tower->s.origin, offset, tower->s.origin);
+    switch (tower_type) {
+        case TOWER_SAP:
+            SP_monster_tower_sap(tower);
+            break;
+        case TOWER_AOE:
+            SP_monster_tower_aoe(tower);
+            break;
+        case TOWER_GUN:
+            SP_monster_tower_gunner(tower);
+            break;
+        case TOWER_CURRENCY:
+            SP_monster_tower_currency(tower);
+            break;
+        case TOWER_SPAWN:
+            SP_monster_tower_spawner(tower);
+            break;
+        default:
+            G_FreeEdict(tower);
+            break;
+    }
+
+    G_FreeEdict(ent);
+}
+
+void
 Grenade_Touch(edict_t *ent, edict_t *other, cplane_t *plane /* unused */, csurface_t *surf)
 {
 	if (!ent || !other) /* plane is unused, surf can be NULL */
@@ -741,6 +871,64 @@ fire_grenade2(edict_t *self, vec3_t start, vec3_t aimdir, int damage,
 						"weapons/hgrent1a.wav"), 1, ATTN_NORM, 0);
 		gi.linkentity(grenade);
 	}
+}
+
+void
+fire_grenade3(edict_t *self, vec3_t start, vec3_t aimdir,
+        int speed, float timer, qboolean held)
+{
+    edict_t *grenade;
+    vec3_t dir;
+    vec3_t forward, right, up;
+
+    if (!self)
+    {
+        return;
+    }
+
+    vectoangles(aimdir, dir);
+    AngleVectors(dir, forward, right, up);
+
+    grenade = G_Spawn();
+    VectorCopy(start, grenade->s.origin);
+    VectorScale(aimdir, speed, grenade->velocity);
+    VectorMA(grenade->velocity, 200 + crandom() * 10.0, up, grenade->velocity);
+    VectorMA(grenade->velocity, crandom() * 10.0, right, grenade->velocity);
+    VectorSet(grenade->avelocity, 300, 300, 300);
+    grenade->movetype = MOVETYPE_BOUNCE;
+    grenade->clipmask = MASK_SHOT;
+    grenade->solid = SOLID_BBOX;
+    grenade->s.effects |= EF_GRENADE;
+    VectorClear(grenade->mins);
+    VectorClear(grenade->maxs);
+    grenade->s.modelindex = gi.modelindex("models/objects/grenade2/tris.md2");
+    grenade->owner = self;
+    grenade->touch = Grenade_Touch;
+    grenade->nextthink = level.time + timer;
+    grenade->think = Grenade_Spawn;
+    grenade->classname = "hgrenade";
+
+    if (held)
+    {
+        grenade->spawnflags = 3;
+    }
+    else
+    {
+        grenade->spawnflags = 1;
+    }
+
+    grenade->s.sound = gi.soundindex("weapons/hgrenc1b.wav");
+
+    if (timer <= 0.0)
+    {
+        Grenade_Spawn(grenade);
+    }
+    else
+    {
+        gi.sound(self, CHAN_WEAPON, gi.soundindex(
+                        "weapons/hgrent1a.wav"), 1, ATTN_NORM, 0);
+        gi.linkentity(grenade);
+    }
 }
 
 void

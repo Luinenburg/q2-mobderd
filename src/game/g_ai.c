@@ -36,6 +36,14 @@ static float enemy_yaw;
 qboolean FindTarget(edict_t *self);
 qboolean ai_checkattack(edict_t *self);
 
+qboolean
+TestTargetOnTeam(edict_t *self, edict_t * target) {
+	if (!self || !target) return false;
+	int bool1 = (self->monsterinfo.aiflags & AI_DEFENDER) > 0;
+	int bool2 = (target->monsterinfo.aiflags & AI_DEFENDER) > 0;
+	return bool1 == bool2;
+}
+
 /*
  * Called once each frame to set level.sight_client
  * to the player to be checked for in findtarget.
@@ -406,6 +414,11 @@ HuntTarget(edict_t *self)
 
 	self->goalentity = self->enemy;
 
+	if (TestTargetOnTeam(self->enemy, self)) {
+		self->enemy = NULL;
+		return;
+	}
+
 	if (self->monsterinfo.aiflags & AI_STAND_GROUND)
 	{
 		self->monsterinfo.stand(self);
@@ -434,6 +447,11 @@ FoundTarget(edict_t *self)
 {
 	if (!self|| !self->enemy || !self->enemy->inuse)
 	{
+		return;
+	}
+
+	if (TestTargetOnTeam(self->enemy, self)) {
+		self->enemy = NULL;
 		return;
 	}
 
@@ -501,7 +519,7 @@ FoundTarget(edict_t *self)
 qboolean
 FindTarget(edict_t *self)
 {
-	edict_t *client;
+	edict_t *possible_target;
 	qboolean heardit;
 	int r;
 
@@ -521,6 +539,11 @@ FindTarget(edict_t *self)
 		return false;
 	}
 
+	if (TestTargetOnTeam(self->enemy, self)) {
+		self->enemy = NULL;
+		return false;
+	}
+
 	/* if the first spawnflag bit is set, the monster
 	   will only wake up on really seeing the player,
 	   not another monster getting angry or hearing
@@ -531,64 +554,68 @@ FindTarget(edict_t *self)
 	if ((level.sight_entity_framenum >= (level.framenum - 1)) &&
 		!(self->spawnflags & 1))
 	{
-		client = level.sight_entity;
+		possible_target = level.sight_entity;
 
-		if (client->enemy == self->enemy)
+		if (possible_target->enemy == self->enemy)
 		{
 			return false;
 		}
 	}
 	else if (level.sound_entity_framenum >= (level.framenum - 1))
 	{
-		client = level.sound_entity;
+		possible_target = level.sound_entity;
 		heardit = true;
 	}
 	else if (!(self->enemy) &&
 			 (level.sound2_entity_framenum >= (level.framenum - 1)) &&
 			 !(self->spawnflags & 1))
 	{
-		client = level.sound2_entity;
+		possible_target = level.sound2_entity;
 		heardit = true;
 	}
 	else
 	{
-		client = level.sight_client;
+		possible_target = level.sight_client;
 	}
 
 	/* if the entity went away, forget it */
-	if (!client || !client->inuse ||
-		(client->client && level.intermissiontime))
+	if (!possible_target || !possible_target->inuse ||
+		(possible_target->client && level.intermissiontime))
 	{
 		return false;
 	}
 
-	if (client == self->enemy)
+	if (possible_target == self->enemy)
 	{
+		if (TestTargetOnTeam(self, possible_target)){
+			self->enemy = NULL;
+			return false;
+		}
 		return true;
 	}
 
-	if (client->client)
+	if (possible_target->client)
 	{
-		if (client->flags & FL_NOTARGET)
+		if (possible_target->flags & FL_NOTARGET)
 		{
 			return false;
 		}
 	}
-	else if (client->svflags & SVF_MONSTER)
+	else if (possible_target->svflags & SVF_MONSTER)
 	{
-		if (!client->enemy)
+		if (!possible_target->enemy)
 		{
 			return false;
 		}
 
-		if (client->enemy->flags & FL_NOTARGET)
+		if (possible_target->enemy->flags & FL_NOTARGET)
 		{
 			return false;
 		}
 	}
 	else if (heardit)
 	{
-		if (client->owner->flags & FL_NOTARGET)
+		if (possible_target->owner->flags & FL_NOTARGET)
 		{
 			return false;
 		}
@@ -600,7 +627,7 @@ FindTarget(edict_t *self)
 
 	if (!heardit)
 	{
-		r = range(self, client);
+		r = range(self, possible_target);
 
 		if (r == RANGE_FAR)
 		{
@@ -608,32 +635,32 @@ FindTarget(edict_t *self)
 		}
 
 		/* is client in an spot too dark to be seen? */
-		if (client->light_level <= 5)
+		if (possible_target->light_level <= 5)
 		{
 			return false;
 		}
 
-		if (!visible(self, client))
+		if (!visible(self, possible_target))
 		{
 			return false;
 		}
 
 		if (r == RANGE_NEAR)
 		{
-			if ((client->show_hostile < level.time) && !infront(self, client))
+			if ((possible_target->show_hostile < level.time) && !infront(self, possible_target))
 			{
 				return false;
 			}
 		}
 		else if (r == RANGE_MID)
 		{
-			if (!infront(self, client))
+			if (!infront(self, possible_target))
 			{
 				return false;
 			}
 		}
 
-		self->enemy = client;
+		self->enemy = possible_target;
 
 		if (strcmp(self->enemy->classname, "player_noise") != 0)
 		{
@@ -657,20 +684,20 @@ FindTarget(edict_t *self)
 
 		if (self->spawnflags & 1)
 		{
-			if (!visible(self, client))
+			if (!visible(self, possible_target))
 			{
 				return false;
 			}
 		}
 		else
 		{
-			if (!gi.inPHS(self->s.origin, client->s.origin))
+			if (!gi.inPHS(self->s.origin, possible_target->s.origin))
 			{
 				return false;
 			}
 		}
 
-		VectorSubtract(client->s.origin, self->s.origin, temp);
+		VectorSubtract(possible_target->s.origin, self->s.origin, temp);
 
 		if (VectorLength(temp) > 1000) /* too far to hear */
 		{
@@ -679,9 +706,9 @@ FindTarget(edict_t *self)
 
 		/* check area portals - if they are different
 		   and not connected then we can't hear it */
-		if (client->areanum != self->areanum)
+		if (possible_target->areanum != self->areanum)
 		{
-			if (!gi.AreasConnected(self->areanum, client->areanum))
+			if (!gi.AreasConnected(self->areanum, possible_target->areanum))
 			{
 				return false;
 			}
@@ -692,7 +719,7 @@ FindTarget(edict_t *self)
 
 		/* hunt the sound for a bit; hopefully find the real player */
 		self->monsterinfo.aiflags |= AI_SOUND_TARGET;
-		self->enemy = client;
+		self->enemy = possible_target;
 	}
 
 	FoundTarget(self);
@@ -703,6 +730,10 @@ FindTarget(edict_t *self)
 		self->monsterinfo.sight(self, self->enemy);
 	}
 
+	if (TestTargetOnTeam(self, possible_target)) {
+		self->enemy = NULL;
+		return false;
+	}
 	return true;
 }
 
@@ -739,6 +770,11 @@ M_CheckAttack(edict_t *self)
 
 	if (!self || !self->enemy || !self->enemy->inuse)
 	{
+		return false;
+	}
+
+	if (TestTargetOnTeam(self, self->enemy)) {
+		self->enemy = NULL;
 		return false;
 	}
 

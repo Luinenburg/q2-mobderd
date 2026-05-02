@@ -571,12 +571,6 @@ SP_monster_berserk(edict_t *self)
 		return;
 	}
 
-	if (deathmatch->value)
-	{
-		G_FreeEdict(self);
-		return;
-	}
-
 	// Force recaching at next footstep to ensure
 	// that the sound indices are correct.
 	sound_step = 0;

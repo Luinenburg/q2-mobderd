@@ -769,6 +769,10 @@ Weapon_Generic(edict_t *ent, int FRAME_ACTIVATE_LAST, int FRAME_FIRE_LAST,
 /* GRENADE */
 
 void
+fire_grenade3(edict_t *self, vec3_t start, vec3_t aimdir,
+        int speed, float timer, qboolean held);
+
+void
 weapon_grenade_fire(edict_t *ent, qboolean held)
 {
 	vec3_t offset;
@@ -801,7 +805,7 @@ weapon_grenade_fire(edict_t *ent, qboolean held)
 	timer = ent->client->grenade_time - level.time;
 	speed = GRENADE_MINSPEED + (GRENADE_TIMER - timer) *
 		((GRENADE_MAXSPEED - GRENADE_MINSPEED) / GRENADE_TIMER);
-	fire_grenade2(ent, start, forward, damage, speed, timer, radius, held);
+	fire_grenade3(ent, start, forward, speed, timer, held);
 
 	if (!((int)dmflags->value & DF_INFINITE_AMMO))
 	{

@@ -609,10 +609,9 @@ SP_monster_tower_spawner(edict_t *self)
 	self->monsterinfo.currentmove = &tower_spawner_move_stand;
 	self->monsterinfo.scale = MODEL_SCALE;
 
-	self->monsterinfo.aiflags |= AI_DEFENDER;
-	self->monsterinfo.aiflags |= AI_GOOD_GUY;
+	//self->monsterinfo.aiflags |= AI_DEFENDER;
+	//self->monsterinfo.aiflags |= AI_GOOD_GUY;
 	self->flags |= FL_NO_KNOCKBACK;
-	self->flags |= FL_NOTARGET;
 
 	gi.linkentity(self);
 

@@ -980,6 +980,7 @@ enum towers {
 	TOWER_AOE,
 	TOWER_CURRENCY,
 	TOWER_SPAWN,
+	TOWER_MAX
 };
 
 struct edict_s

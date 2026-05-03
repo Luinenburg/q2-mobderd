@@ -1808,14 +1808,14 @@ ClientBeginDeathmatch(edict_t *ent)
 
 	ent->monsterinfo.aiflags |= AI_DEFENDER;
 
-	ent->towers[TOWER_AOE] = 0;
-	ent->towers[TOWER_CURRENCY] = 0;
-	ent->towers[TOWER_GUN] = 0;
+	ent->towers[TOWER_AOE] = 2;
+	ent->towers[TOWER_CURRENCY] = 2;
+	ent->towers[TOWER_GUN] = 2;
 	ent->towers[TOWER_SAP] = 2;
-	ent->towers[TOWER_SPAWN] = 0;
+	ent->towers[TOWER_SPAWN] = 2;
 
 	ent->currency = 20;
-    ent->current_tower = TOWER_CURRENCY;
+    ent->current_tower = TOWER_SAP;
 
 	/* make sure all view stuff is valid */
 	ClientEndServerFrame(ent);
@@ -1886,6 +1886,8 @@ ClientBegin(edict_t *ent)
 					ent->client->pers.netname);
 		}
 	}
+	ent->monsterinfo.aiflags |= AI_DEFENDER;
+
 
 	/* make sure all view stuff is valid */
 	ClientEndServerFrame(ent);

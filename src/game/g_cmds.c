@@ -1823,6 +1823,120 @@ Cmd_PrefWeap_f(edict_t *ent)
 }
 
 void
+Cmd_DisplayTowers_f(edict_t *ent) {
+	if (!ent) {
+		return;
+	}
+	switch (ent->current_tower) {
+		case TOWER_SAP:
+			gi.centerprintf(ent, "Sap: %d, Gunner: %d, AOE: %d, Currency: %d, Spawner: %d\nCurrency: %d, Current Tower: Sap",
+			ent->towers[TOWER_SAP], ent->towers[TOWER_GUN], ent->towers[TOWER_AOE], ent->towers[TOWER_CURRENCY], ent->towers[TOWER_SPAWN], ent->currency);
+			break;
+		case TOWER_AOE:
+			gi.centerprintf(ent, "Sap: %d, Gunner: %d, AOE: %d, Currency: %d, Spawner: %d\nCurrency: %d, Current Tower: AOE",
+			ent->towers[TOWER_SAP], ent->towers[TOWER_GUN], ent->towers[TOWER_AOE], ent->towers[TOWER_CURRENCY], ent->towers[TOWER_SPAWN], ent->currency);
+			break;
+		case TOWER_GUN:
+			gi.centerprintf(ent, "Sap: %d, Gunner: %d, AOE: %d, Currency: %d, Spawner: %d\nCurrency: %d, Current Tower: Gun",
+			ent->towers[TOWER_SAP], ent->towers[TOWER_GUN], ent->towers[TOWER_AOE], ent->towers[TOWER_CURRENCY], ent->towers[TOWER_SPAWN], ent->currency);
+			break;
+		case TOWER_SPAWN:
+			gi.centerprintf(ent, "Sap: %d, Gunner: %d, AOE: %d, Currency: %d, Spawner: %d\nCurrency: %d, Current Tower: Spawn",
+			ent->towers[TOWER_SAP], ent->towers[TOWER_GUN], ent->towers[TOWER_AOE], ent->towers[TOWER_CURRENCY], ent->towers[TOWER_SPAWN], ent->currency);
+			break;
+		case TOWER_CURRENCY:
+			gi.centerprintf(ent, "Sap: %d, Gunner: %d, AOE: %d, Currency: %d, Spawner: %d\nCurrency: %d, Current Tower: Currency",
+			ent->towers[TOWER_SAP], ent->towers[TOWER_GUN], ent->towers[TOWER_AOE], ent->towers[TOWER_CURRENCY], ent->towers[TOWER_SPAWN], ent->currency);
+			break;
+		default:
+			gi.centerprintf(ent, "Sap: %d, Gunner: %d, AOE: %d, Currency: %d, Spawner: %d\nCurrency: %d, Current Tower: Error",
+			ent->towers[TOWER_SAP], ent->towers[TOWER_GUN], ent->towers[TOWER_AOE], ent->towers[TOWER_CURRENCY], ent->towers[TOWER_SPAWN], ent->currency);
+			break;
+	}
+}
+
+static void
+Cmd_BuyTower_f(edict_t *ent) {
+	qboolean purchase_attempt;
+	int cost;
+	char* purchased_tower;
+
+	if (!ent) return;
+	switch (ent->current_tower) {
+		case TOWER_SAP:
+			purchased_tower = "sap";
+			cost = 2;
+			break;
+		case TOWER_AOE:
+			purchased_tower = "aoe";
+			cost = 6;
+			break;
+		case TOWER_CURRENCY:
+			purchased_tower = "currency";
+			cost = 20;
+			break;
+		case TOWER_GUN:
+			purchased_tower = "gunner";
+			cost = 4;
+			break;
+		case TOWER_SPAWN:
+			purchased_tower = "spawner";
+			cost = 10;
+			break;
+		default:
+			purchased_tower = "ERROR";
+			cost = 0;
+	}
+	if (ent->currency - cost >= 0) {
+		ent->currency -= cost;
+		ent->towers[ent->current_tower]++;
+		gi.centerprintf(ent, "Successfully purchased %s", purchased_tower);
+	} else {
+		gi.centerprintf(ent, "You're too poor for %s", purchased_tower);
+	}
+}
+
+char*
+TowerToString(int tower) {
+	char* error;
+	switch (tower) {
+		case TOWER_SAP:
+			return "sap";
+		case TOWER_AOE:
+			return "AOE";
+		case TOWER_CURRENCY:
+			return "currency";
+		case TOWER_SPAWN:
+			return "spawner";
+		case TOWER_GUN:
+			return "gunner";
+		default:
+			sprintf(error, "%d", tower);
+			return error;
+	}
+	return "big oops";
+}
+
+static void
+Cmd_CycleTower_f(edict_t *ent) {
+	int old_tower, new_tower;
+
+	if (!ent) return;
+	old_tower = ent->current_tower;
+	new_tower = old_tower + 1;
+	if (new_tower >= TOWER_MAX) new_tower = 0;
+	ent->current_tower = new_tower;
+	gi.centerprintf(ent, "Cycled from %s to %s", TowerToString(old_tower), TowerToString(new_tower));
+}
+
+static void
+Cmd_MakeItRain_f(edict_t *ent) {
+	if (!ent) return;
+	ent->currency += 100;
+	gi.centerprintf(ent, "You have %d currency", ent->currency);
+}
+
+void
 ClientCommand(edict_t *ent)
 {
 	char *cmd;
@@ -1985,6 +2099,22 @@ ClientCommand(edict_t *ent)
 	else if (Q_stricmp(cmd, "prefweap") == 0)
 	{
 		Cmd_PrefWeap_f(ent);
+	}
+	else if (Q_stricmp(cmd, "check_towers") == 0)
+	{
+		Cmd_DisplayTowers_f(ent);
+	}
+	else if (Q_stricmp(cmd, "buy_tower") == 0)
+	{
+		Cmd_BuyTower_f(ent);
+	}
+	else if (Q_stricmp(cmd, "cycle_towers") == 0)
+	{
+		Cmd_CycleTower_f(ent);
+	}
+		else if (Q_stricmp(cmd, "mir") == 0)
+	{
+		Cmd_MakeItRain_f(ent);
 	}
 	else /* anything that doesn't match a command will be a chat */
 	{

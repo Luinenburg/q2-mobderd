@@ -6055,6 +6055,128 @@ M_Menu_Quit_f(void)
     M_PushMenu(M_Quit_Draw, M_Quit_Key);
 }
 
+/*
+ * HELP MENU
+ */
+
+static const char *
+M_QuowerHelp_Key(int key);
+static void
+M_QuowerHelp_Draw(void);
+
+ static const char *
+M_QuowerShop_Key(int key)
+{
+    int menu_key = Key_GetMenuKey(key);
+    switch (menu_key)
+    {
+    case K_ESCAPE:
+    case 'n':
+    case 'N':
+        M_PopMenu();
+        break;
+
+    case K_RIGHTARROW:
+        M_PopMenu();
+        M_PushMenu(M_QuowerHelp_Draw, M_QuowerHelp_Key);
+        break;
+
+    default:
+        break;
+    }
+
+    return NULL;
+}
+
+static void
+M_QuowerShop_Draw(void)
+{
+    int w, h;
+	float scale = SCR_GetMenuScale();
+
+    Draw_GetPicSize(&w, &h, "quower_shop");
+    Draw_PicScaled((viddef.width - w * scale) / 2, (viddef.height - h * scale) / 2, "quower_shop", scale);
+}
+
+static const char *
+M_Quowers_Key(int key)
+{
+    int menu_key = Key_GetMenuKey(key);
+    switch (menu_key)
+    {
+    case K_ESCAPE:
+    case 'n':
+    case 'N':
+        M_PopMenu();
+        break;
+
+    case K_LEFTARROW:
+        M_PopMenu();
+        M_PushMenu(M_QuowerHelp_Draw, M_QuowerHelp_Key);
+        break;
+
+    default:
+        break;
+    }
+
+    return NULL;
+}
+
+static void
+M_Quowers_Draw(void)
+{
+    int w, h;
+	float scale = SCR_GetMenuScale();
+
+    Draw_GetPicSize(&w, &h, "quowers");
+    Draw_PicScaled((viddef.width - w * scale) / 2, (viddef.height - h * scale) / 2, "quowers", scale);
+}
+
+static const char *
+M_QuowerHelp_Key(int key)
+{
+    int menu_key = Key_GetMenuKey(key);
+    switch (menu_key)
+    {
+    case K_ESCAPE:
+    case 'n':
+    case 'N':
+        M_PopMenu();
+        break;
+
+    case K_RIGHTARROW:
+        M_PopMenu();
+        M_PushMenu(M_Quowers_Draw, M_Quowers_Key);
+        break;
+
+    case K_LEFTARROW:
+        M_PopMenu();
+        M_PushMenu(M_QuowerShop_Draw, M_QuowerShop_Key);
+        break;
+
+    default:
+        break;
+    }
+
+    return NULL;
+}
+
+static void
+M_QuowerHelp_Draw(void)
+{
+    int w, h;
+	float scale = SCR_GetMenuScale();
+
+    Draw_GetPicSize(&w, &h, "quower_help");
+    Draw_PicScaled((viddef.width - w * scale) / 2, (viddef.height - h * scale) / 2, "quower_help", scale);
+}
+
+static void
+M_Menu_QuowerHelp_f(void)
+{
+    M_PushMenu(M_QuowerHelp_Draw, M_QuowerHelp_Key);
+}
+
 void
 M_Init(void)
 {
@@ -6086,6 +6208,7 @@ M_Init(void)
     Cmd_AddCommand("menu_buttons", M_Menu_ControllerButtons_f);
     Cmd_AddCommand("menu_altbuttons", M_Menu_ControllerAltButtons_f);
     Cmd_AddCommand("menu_quit", M_Menu_Quit_f);
+    Cmd_AddCommand("menu_quower_help", M_Menu_QuowerHelp_f);
 
     /* initialize the server address book cvars (adr0, adr1, ...)
      * so the entries are not lost if you don't open the address book */

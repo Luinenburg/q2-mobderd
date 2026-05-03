@@ -41,6 +41,7 @@ TestTargetOnTeam(edict_t *self, edict_t * target) {
 	if (!self || !target) return false;
 	int bool1 = (self->monsterinfo.aiflags & AI_DEFENDER) > 0;
 	int bool2 = (target->monsterinfo.aiflags & AI_DEFENDER) > 0;
+
 	return bool1 == bool2;
 }
 
@@ -51,6 +52,54 @@ TestTargetOnTeam(edict_t *self, edict_t * target) {
  * sight_client will be null.
  * In coop games, sight_client will cycle
  * between the clients.
+ */
+void
+AI_SetSightClient_Unmodded(void)
+{
+	edict_t *ent;
+	int start, check;
+
+	if (level.sight_client == NULL)
+	{
+		start = 1;
+	}
+	else
+	{
+		start = level.sight_client - g_edicts;
+	}
+
+	check = start;
+
+	while (1)
+	{
+		check++;
+
+		if (check > game.maxclients)
+		{
+			check = 1;
+		}
+
+		ent = &g_edicts[check];
+
+		if (ent->inuse &&
+			(ent->health > 0) &&
+			!(ent->flags & FL_NOTARGET))
+		{
+			level.sight_client = ent;
+			return; /* got one */
+		}
+
+		if (check == start)
+		{
+			level.sight_client = NULL;
+			return; /* nobody to see */
+		}
+	}
+}
+
+/*
+ * Called once each frame to set level.sight_client
+ * assign target from any edict
  */
 void
 AI_SetSightClient(void)
@@ -73,7 +122,7 @@ AI_SetSightClient(void)
 	{
 		check++;
 
-		if (check > game.maxclients)
+		if (check > globals.num_edicts)
 		{
 			check = 1;
 		}
@@ -456,7 +505,7 @@ FoundTarget(edict_t *self)
 	}
 
 	/* let other monsters see this monster for a while */
-	if (self->enemy->client)
+	if (self->enemy/*->client*/)
 	{
 		level.sight_entity = self;
 		level.sight_entity_framenum = level.framenum;
@@ -580,14 +629,14 @@ FindTarget(edict_t *self)
 
 	/* if the entity went away, forget it */
 	if (!possible_target || !possible_target->inuse ||
-		(possible_target->client && level.intermissiontime))
+		(/*possible_target->client &&*/ level.intermissiontime))
 	{
 		return false;
 	}
 
 	if (possible_target == self->enemy)
 	{
-		if (TestTargetOnTeam(self, possible_target)){
+		if (TestTargetOnTeam(self, self->enemy)){
 			self->enemy = NULL;
 			return false;
 		}
@@ -669,12 +718,12 @@ FindTarget(edict_t *self)
 			if (!self->enemy->client)
 			{
 				self->enemy = self->enemy->enemy;
-
+				/*
 				if (!self->enemy->client)
 				{
 					self->enemy = NULL;
 					return false;
-				}
+				}*/
 			}
 		}
 	}
@@ -730,10 +779,10 @@ FindTarget(edict_t *self)
 		self->monsterinfo.sight(self, self->enemy);
 	}
 
-	if (TestTargetOnTeam(self, possible_target)) {
-		self->enemy = NULL;
-		return false;
-	}
+	//if (TestTargetOnTeam(self, possible_target)) {
+	//	self->enemy = NULL;
+	//	return false;
+	//}
 	return true;
 }
 

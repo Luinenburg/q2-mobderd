@@ -584,7 +584,6 @@ T_Damage(edict_t *targ, edict_t *inflictor, edict_t *attacker,
 	}
 
 	if (!CanDamage(targ, attacker)) return;
-	if (!CanDamage(targ, inflictor)) return;
 
 	if (!targ->takedamage)
 	{

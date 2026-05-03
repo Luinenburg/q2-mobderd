@@ -610,13 +610,24 @@ Grenade_Explode(edict_t *ent)
 	G_FreeEdict(ent);
 }
 
+qboolean
+Attempt_Tower_Spawn(edict_t *spawner, void (*tower_spawn_func)(edict_t *tower), edict_t* tower){
+	if (spawner->towers[spawner->current_tower] - 1 >= 0) {
+		spawner->towers[spawner->current_tower] -= 1;
+		tower_spawn_func(tower);
+		return true;
+	}
+	return false;
+}
+
 void
 Grenade_Spawn(edict_t *ent)
 {
     vec3_t origin;
     int mod;
     edict_t *tower;
-    int tower_type;
+	edict_t* owner;
+	qboolean result;
 
     if (!ent)
     {
@@ -626,12 +637,11 @@ Grenade_Spawn(edict_t *ent)
         return;
     }
 
-    tower_type = ent->owner->current_tower;
-
     if (ent->owner && ent->owner->client)
     {
         PlayerNoise(ent->owner, ent->s.origin, PNOISE_IMPACT);
     }
+	owner = ent->owner;
 
     if (ent->enemy)
     {
@@ -701,26 +711,30 @@ Grenade_Spawn(edict_t *ent)
     VectorCopy(ent->s.origin, tower->s.origin);
     const float offset[3] = {0, 0, 50};
     VectorAdd(tower->s.origin, offset, tower->s.origin);
-    switch (tower_type) {
+	result = false;
+    switch (owner->current_tower) {
         case TOWER_SAP:
-            SP_monster_tower_sap(tower);
+			result = Attempt_Tower_Spawn(owner, SP_monster_tower_sap, tower);
             break;
         case TOWER_AOE:
-            SP_monster_tower_aoe(tower);
+			result = Attempt_Tower_Spawn(owner, SP_monster_tower_aoe, tower);
             break;
         case TOWER_GUN:
-            SP_monster_tower_gunner(tower);
+			result = Attempt_Tower_Spawn(owner, SP_monster_tower_gunner, tower);
             break;
         case TOWER_CURRENCY:
-            SP_monster_tower_currency(tower);
+            result = Attempt_Tower_Spawn(owner, SP_monster_tower_currency, tower);
             break;
         case TOWER_SPAWN:
-            SP_monster_tower_spawner(tower);
+            result = Attempt_Tower_Spawn(owner, SP_monster_tower_spawner, tower);
             break;
         default:
             G_FreeEdict(tower);
             break;
     }
+	if (!result) {
+		gi.centerprintf(owner, "Spawning failed.\nNumber of current tower: %d\n", owner->towers[owner->current_tower]);
+	}
 
     G_FreeEdict(ent);
 }
@@ -771,6 +785,54 @@ Grenade_Touch(edict_t *ent, edict_t *other, cplane_t *plane /* unused */, csurfa
 
 	ent->enemy = other;
 	Grenade_Explode(ent);
+}
+
+void
+Grenade_Touch_Spawn(edict_t *ent, edict_t *other, cplane_t *plane /* unused */, csurface_t *surf)
+{
+	if (!ent || !other) /* plane is unused, surf can be NULL */
+	{
+		G_FreeEdict(ent);
+		return;
+	}
+
+	if (other == ent->owner)
+	{
+		return;
+	}
+
+	if (surf && (surf->flags & SURF_SKY))
+	{
+		G_FreeEdict(ent);
+		return;
+	}
+
+	if (!other->takedamage)
+	{
+		if (ent->spawnflags & 1)
+		{
+			if (random() > 0.5)
+			{
+				gi.sound(ent, CHAN_VOICE, gi.soundindex(
+								"weapons/hgrenb1a.wav"), 1, ATTN_NORM, 0);
+			}
+			else
+			{
+				gi.sound(ent, CHAN_VOICE, gi.soundindex(
+								"weapons/hgrenb2a.wav"), 1, ATTN_NORM, 0);
+			}
+		}
+		else
+		{
+			gi.sound(ent, CHAN_VOICE, gi.soundindex(
+							"weapons/grenlb1b.wav"), 1, ATTN_NORM, 0);
+		}
+
+		return;
+	}
+
+	ent->enemy = other;
+	Grenade_Spawn(ent);
 }
 
 void
@@ -903,7 +965,7 @@ fire_grenade3(edict_t *self, vec3_t start, vec3_t aimdir,
     VectorClear(grenade->maxs);
     grenade->s.modelindex = gi.modelindex("models/objects/grenade2/tris.md2");
     grenade->owner = self;
-    grenade->touch = Grenade_Touch;
+    grenade->touch = Grenade_Touch_Spawn;
     grenade->nextthink = level.time + timer;
     grenade->think = Grenade_Spawn;
     grenade->classname = "hgrenade";

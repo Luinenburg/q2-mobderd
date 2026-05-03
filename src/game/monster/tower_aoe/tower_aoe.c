@@ -765,7 +765,7 @@ SP_monster_tower_aoe(edict_t *self)
 	sound_scratch = gi.soundindex("parasite/paridle2.wav");
 	sound_search = gi.soundindex("parasite/parsrch1.wav");
 
-	self->s.modelindex = gi.modelindex("models/monsters/parasite/tris.md2");
+	self->s.modelindex = gi.modelindex("models/monsters/mutant/tris.md2");
 	VectorSet(self->mins, -16, -16, -24);
 	VectorSet(self->maxs, 16, 16, 24);
 	self->movetype = MOVETYPE_STEP;

@@ -641,10 +641,10 @@ monster_use(edict_t *self, edict_t *other /* unused */, edict_t *activator)
 		return;
 	}
 
-	if (!(activator->client) && !(activator->monsterinfo.aiflags & AI_GOOD_GUY))
+	/*if (!(activator->client) && !(activator->monsterinfo.aiflags & AI_GOOD_GUY))
 	{
 		return;
-	}
+	}*/
 
 	/* delay reaction so if the monster is
 	   teleported, its sound is still heard */
@@ -784,7 +784,7 @@ monster_start(edict_t *self)
 	}
 
 	self->nextthink = level.time + FRAMETIME;
-	self->svflags |= SVF_MONSTER;
+	//self->svflags |= SVF_MONSTER;
 	self->s.renderfx |= RF_FRAMELERP;
 	self->takedamage = DAMAGE_AIM;
 	self->air_finished = level.time + 12;

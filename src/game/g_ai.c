@@ -643,7 +643,7 @@ FindTarget(edict_t *self)
 		return true;
 	}
 
-	if (possible_target->client)
+	/*if (possible_target->client)
 	{
 		if (possible_target->flags & FL_NOTARGET)
 		{
@@ -672,16 +672,16 @@ FindTarget(edict_t *self)
 	else
 	{
 		return false;
-	}
+	}*/
 
 	if (!heardit)
 	{
 		r = range(self, possible_target);
 
-		if (r == RANGE_FAR)
+		/*if (r == RANGE_FAR)
 		{
 			return false;
-		}
+		}*/
 
 		/* is client in an spot too dark to be seen? */
 		if (possible_target->light_level <= 5)
@@ -714,17 +714,17 @@ FindTarget(edict_t *self)
 		if (strcmp(self->enemy->classname, "player_noise") != 0)
 		{
 			self->monsterinfo.aiflags &= ~AI_SOUND_TARGET;
-
+			/*
 			if (!self->enemy->client)
 			{
 				self->enemy = self->enemy->enemy;
-				/*
+
 				if (!self->enemy->client)
 				{
 					self->enemy = NULL;
 					return false;
-				}*/
-			}
+				}
+			}*/
 		}
 	}
 	else /* heardit */

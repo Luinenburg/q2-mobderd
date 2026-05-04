@@ -3207,11 +3207,323 @@ CMakeFiles/game.dir/src/game/monster/tank/tank.c.o: src/game/monster/tank/tank.c
   /usr/lib/gcc/x86_64-redhat-linux/15/include/stdarg.h \
   /usr/lib/gcc/x86_64-redhat-linux/15/include/stddef.h
 
+CMakeFiles/game.dir/src/game/monster/tower_aoe/tower_aoe.c.o: src/game/monster/tower_aoe/tower_aoe.c \
+  src/common/header/shared.h \
+  src/game/header/game.h \
+  src/game/header/local.h \
+  src/game/monster/tower_aoe/tower_aoe.h \
+  /usr/include/alloca.h \
+  /usr/include/assert.h \
+  /usr/include/bits/atomic_wide_counter.h \
+  /usr/include/bits/byteswap.h \
+  /usr/include/bits/endian.h \
+  /usr/include/bits/endianness.h \
+  /usr/include/bits/floatn-common.h \
+  /usr/include/bits/floatn.h \
+  /usr/include/bits/flt-eval-method.h \
+  /usr/include/bits/fp-fast.h \
+  /usr/include/bits/fp-logb.h \
+  /usr/include/bits/libc-header-start.h \
+  /usr/include/bits/libm-simd-decl-stubs.h \
+  /usr/include/bits/long-double.h \
+  /usr/include/bits/math-vector.h \
+  /usr/include/bits/mathcalls-helper-functions.h \
+  /usr/include/bits/mathcalls-macros.h \
+  /usr/include/bits/mathcalls.h \
+  /usr/include/bits/pthreadtypes-arch.h \
+  /usr/include/bits/pthreadtypes.h \
+  /usr/include/bits/select.h \
+  /usr/include/bits/stdint-intn.h \
+  /usr/include/bits/stdio_lim.h \
+  /usr/include/bits/stdlib-float.h \
+  /usr/include/bits/struct_mutex.h \
+  /usr/include/bits/struct_rwlock.h \
+  /usr/include/bits/thread-shared-types.h \
+  /usr/include/bits/time.h \
+  /usr/include/bits/time64.h \
+  /usr/include/bits/timesize.h \
+  /usr/include/bits/types.h \
+  /usr/include/bits/types/FILE.h \
+  /usr/include/bits/types/__FILE.h \
+  /usr/include/bits/types/__fpos64_t.h \
+  /usr/include/bits/types/__fpos_t.h \
+  /usr/include/bits/types/__locale_t.h \
+  /usr/include/bits/types/__mbstate_t.h \
+  /usr/include/bits/types/__sigset_t.h \
+  /usr/include/bits/types/clock_t.h \
+  /usr/include/bits/types/clockid_t.h \
+  /usr/include/bits/types/cookie_io_functions_t.h \
+  /usr/include/bits/types/locale_t.h \
+  /usr/include/bits/types/sigset_t.h \
+  /usr/include/bits/types/struct_FILE.h \
+  /usr/include/bits/types/struct_itimerspec.h \
+  /usr/include/bits/types/struct_timespec.h \
+  /usr/include/bits/types/struct_timeval.h \
+  /usr/include/bits/types/struct_tm.h \
+  /usr/include/bits/types/time_t.h \
+  /usr/include/bits/types/timer_t.h \
+  /usr/include/bits/typesizes.h \
+  /usr/include/bits/uintn-identity.h \
+  /usr/include/bits/waitflags.h \
+  /usr/include/bits/waitstatus.h \
+  /usr/include/bits/wordsize.h \
+  /usr/include/endian.h \
+  /usr/include/features-time64.h \
+  /usr/include/features.h \
+  /usr/include/gnu/stubs-64.h \
+  /usr/include/gnu/stubs.h \
+  /usr/include/math.h \
+  /usr/include/stdc-predef.h \
+  /usr/include/stdio.h \
+  /usr/include/stdlib.h \
+  /usr/include/string.h \
+  /usr/include/strings.h \
+  /usr/include/sys/cdefs.h \
+  /usr/include/sys/select.h \
+  /usr/include/sys/types.h \
+  /usr/include/time.h \
+  /usr/lib/gcc/x86_64-redhat-linux/15/include/stdarg.h \
+  /usr/lib/gcc/x86_64-redhat-linux/15/include/stddef.h
+
+CMakeFiles/game.dir/src/game/monster/tower_currency/tower_currency.c.o: src/game/monster/tower_currency/tower_currency.c \
+  src/common/header/shared.h \
+  src/game/header/game.h \
+  src/game/header/local.h \
+  src/game/monster/tower_currency/tower_currency.h \
+  /usr/include/alloca.h \
+  /usr/include/assert.h \
+  /usr/include/bits/atomic_wide_counter.h \
+  /usr/include/bits/byteswap.h \
+  /usr/include/bits/endian.h \
+  /usr/include/bits/endianness.h \
+  /usr/include/bits/floatn-common.h \
+  /usr/include/bits/floatn.h \
+  /usr/include/bits/flt-eval-method.h \
+  /usr/include/bits/fp-fast.h \
+  /usr/include/bits/fp-logb.h \
+  /usr/include/bits/libc-header-start.h \
+  /usr/include/bits/libm-simd-decl-stubs.h \
+  /usr/include/bits/long-double.h \
+  /usr/include/bits/math-vector.h \
+  /usr/include/bits/mathcalls-helper-functions.h \
+  /usr/include/bits/mathcalls-macros.h \
+  /usr/include/bits/mathcalls.h \
+  /usr/include/bits/pthreadtypes-arch.h \
+  /usr/include/bits/pthreadtypes.h \
+  /usr/include/bits/select.h \
+  /usr/include/bits/stdint-intn.h \
+  /usr/include/bits/stdio_lim.h \
+  /usr/include/bits/stdlib-float.h \
+  /usr/include/bits/struct_mutex.h \
+  /usr/include/bits/struct_rwlock.h \
+  /usr/include/bits/thread-shared-types.h \
+  /usr/include/bits/time.h \
+  /usr/include/bits/time64.h \
+  /usr/include/bits/timesize.h \
+  /usr/include/bits/types.h \
+  /usr/include/bits/types/FILE.h \
+  /usr/include/bits/types/__FILE.h \
+  /usr/include/bits/types/__fpos64_t.h \
+  /usr/include/bits/types/__fpos_t.h \
+  /usr/include/bits/types/__locale_t.h \
+  /usr/include/bits/types/__mbstate_t.h \
+  /usr/include/bits/types/__sigset_t.h \
+  /usr/include/bits/types/clock_t.h \
+  /usr/include/bits/types/clockid_t.h \
+  /usr/include/bits/types/cookie_io_functions_t.h \
+  /usr/include/bits/types/locale_t.h \
+  /usr/include/bits/types/sigset_t.h \
+  /usr/include/bits/types/struct_FILE.h \
+  /usr/include/bits/types/struct_itimerspec.h \
+  /usr/include/bits/types/struct_timespec.h \
+  /usr/include/bits/types/struct_timeval.h \
+  /usr/include/bits/types/struct_tm.h \
+  /usr/include/bits/types/time_t.h \
+  /usr/include/bits/types/timer_t.h \
+  /usr/include/bits/typesizes.h \
+  /usr/include/bits/uintn-identity.h \
+  /usr/include/bits/waitflags.h \
+  /usr/include/bits/waitstatus.h \
+  /usr/include/bits/wordsize.h \
+  /usr/include/endian.h \
+  /usr/include/features-time64.h \
+  /usr/include/features.h \
+  /usr/include/gnu/stubs-64.h \
+  /usr/include/gnu/stubs.h \
+  /usr/include/math.h \
+  /usr/include/stdc-predef.h \
+  /usr/include/stdio.h \
+  /usr/include/stdlib.h \
+  /usr/include/string.h \
+  /usr/include/strings.h \
+  /usr/include/sys/cdefs.h \
+  /usr/include/sys/select.h \
+  /usr/include/sys/types.h \
+  /usr/include/time.h \
+  /usr/lib/gcc/x86_64-redhat-linux/15/include/stdarg.h \
+  /usr/lib/gcc/x86_64-redhat-linux/15/include/stddef.h
+
+CMakeFiles/game.dir/src/game/monster/tower_gunner/tower_gunner.c.o: src/game/monster/tower_gunner/tower_gunner.c \
+  src/common/header/shared.h \
+  src/game/header/game.h \
+  src/game/header/local.h \
+  src/game/monster/tower_gunner/tower_gunner.h \
+  /usr/include/alloca.h \
+  /usr/include/assert.h \
+  /usr/include/bits/atomic_wide_counter.h \
+  /usr/include/bits/byteswap.h \
+  /usr/include/bits/endian.h \
+  /usr/include/bits/endianness.h \
+  /usr/include/bits/floatn-common.h \
+  /usr/include/bits/floatn.h \
+  /usr/include/bits/flt-eval-method.h \
+  /usr/include/bits/fp-fast.h \
+  /usr/include/bits/fp-logb.h \
+  /usr/include/bits/libc-header-start.h \
+  /usr/include/bits/libm-simd-decl-stubs.h \
+  /usr/include/bits/long-double.h \
+  /usr/include/bits/math-vector.h \
+  /usr/include/bits/mathcalls-helper-functions.h \
+  /usr/include/bits/mathcalls-macros.h \
+  /usr/include/bits/mathcalls.h \
+  /usr/include/bits/pthreadtypes-arch.h \
+  /usr/include/bits/pthreadtypes.h \
+  /usr/include/bits/select.h \
+  /usr/include/bits/stdint-intn.h \
+  /usr/include/bits/stdio_lim.h \
+  /usr/include/bits/stdlib-float.h \
+  /usr/include/bits/struct_mutex.h \
+  /usr/include/bits/struct_rwlock.h \
+  /usr/include/bits/thread-shared-types.h \
+  /usr/include/bits/time.h \
+  /usr/include/bits/time64.h \
+  /usr/include/bits/timesize.h \
+  /usr/include/bits/types.h \
+  /usr/include/bits/types/FILE.h \
+  /usr/include/bits/types/__FILE.h \
+  /usr/include/bits/types/__fpos64_t.h \
+  /usr/include/bits/types/__fpos_t.h \
+  /usr/include/bits/types/__locale_t.h \
+  /usr/include/bits/types/__mbstate_t.h \
+  /usr/include/bits/types/__sigset_t.h \
+  /usr/include/bits/types/clock_t.h \
+  /usr/include/bits/types/clockid_t.h \
+  /usr/include/bits/types/cookie_io_functions_t.h \
+  /usr/include/bits/types/locale_t.h \
+  /usr/include/bits/types/sigset_t.h \
+  /usr/include/bits/types/struct_FILE.h \
+  /usr/include/bits/types/struct_itimerspec.h \
+  /usr/include/bits/types/struct_timespec.h \
+  /usr/include/bits/types/struct_timeval.h \
+  /usr/include/bits/types/struct_tm.h \
+  /usr/include/bits/types/time_t.h \
+  /usr/include/bits/types/timer_t.h \
+  /usr/include/bits/typesizes.h \
+  /usr/include/bits/uintn-identity.h \
+  /usr/include/bits/waitflags.h \
+  /usr/include/bits/waitstatus.h \
+  /usr/include/bits/wordsize.h \
+  /usr/include/endian.h \
+  /usr/include/features-time64.h \
+  /usr/include/features.h \
+  /usr/include/gnu/stubs-64.h \
+  /usr/include/gnu/stubs.h \
+  /usr/include/math.h \
+  /usr/include/stdc-predef.h \
+  /usr/include/stdio.h \
+  /usr/include/stdlib.h \
+  /usr/include/string.h \
+  /usr/include/strings.h \
+  /usr/include/sys/cdefs.h \
+  /usr/include/sys/select.h \
+  /usr/include/sys/types.h \
+  /usr/include/time.h \
+  /usr/lib/gcc/x86_64-redhat-linux/15/include/stdarg.h \
+  /usr/lib/gcc/x86_64-redhat-linux/15/include/stddef.h
+
 CMakeFiles/game.dir/src/game/monster/tower_sap/tower_sap.c.o: src/game/monster/tower_sap/tower_sap.c \
   src/common/header/shared.h \
   src/game/header/game.h \
   src/game/header/local.h \
   src/game/monster/tower_sap/tower_sap.h \
+  /usr/include/alloca.h \
+  /usr/include/assert.h \
+  /usr/include/bits/atomic_wide_counter.h \
+  /usr/include/bits/byteswap.h \
+  /usr/include/bits/endian.h \
+  /usr/include/bits/endianness.h \
+  /usr/include/bits/floatn-common.h \
+  /usr/include/bits/floatn.h \
+  /usr/include/bits/flt-eval-method.h \
+  /usr/include/bits/fp-fast.h \
+  /usr/include/bits/fp-logb.h \
+  /usr/include/bits/libc-header-start.h \
+  /usr/include/bits/libm-simd-decl-stubs.h \
+  /usr/include/bits/long-double.h \
+  /usr/include/bits/math-vector.h \
+  /usr/include/bits/mathcalls-helper-functions.h \
+  /usr/include/bits/mathcalls-macros.h \
+  /usr/include/bits/mathcalls.h \
+  /usr/include/bits/pthreadtypes-arch.h \
+  /usr/include/bits/pthreadtypes.h \
+  /usr/include/bits/select.h \
+  /usr/include/bits/stdint-intn.h \
+  /usr/include/bits/stdio_lim.h \
+  /usr/include/bits/stdlib-float.h \
+  /usr/include/bits/struct_mutex.h \
+  /usr/include/bits/struct_rwlock.h \
+  /usr/include/bits/thread-shared-types.h \
+  /usr/include/bits/time.h \
+  /usr/include/bits/time64.h \
+  /usr/include/bits/timesize.h \
+  /usr/include/bits/types.h \
+  /usr/include/bits/types/FILE.h \
+  /usr/include/bits/types/__FILE.h \
+  /usr/include/bits/types/__fpos64_t.h \
+  /usr/include/bits/types/__fpos_t.h \
+  /usr/include/bits/types/__locale_t.h \
+  /usr/include/bits/types/__mbstate_t.h \
+  /usr/include/bits/types/__sigset_t.h \
+  /usr/include/bits/types/clock_t.h \
+  /usr/include/bits/types/clockid_t.h \
+  /usr/include/bits/types/cookie_io_functions_t.h \
+  /usr/include/bits/types/locale_t.h \
+  /usr/include/bits/types/sigset_t.h \
+  /usr/include/bits/types/struct_FILE.h \
+  /usr/include/bits/types/struct_itimerspec.h \
+  /usr/include/bits/types/struct_timespec.h \
+  /usr/include/bits/types/struct_timeval.h \
+  /usr/include/bits/types/struct_tm.h \
+  /usr/include/bits/types/time_t.h \
+  /usr/include/bits/types/timer_t.h \
+  /usr/include/bits/typesizes.h \
+  /usr/include/bits/uintn-identity.h \
+  /usr/include/bits/waitflags.h \
+  /usr/include/bits/waitstatus.h \
+  /usr/include/bits/wordsize.h \
+  /usr/include/endian.h \
+  /usr/include/features-time64.h \
+  /usr/include/features.h \
+  /usr/include/gnu/stubs-64.h \
+  /usr/include/gnu/stubs.h \
+  /usr/include/math.h \
+  /usr/include/stdc-predef.h \
+  /usr/include/stdio.h \
+  /usr/include/stdlib.h \
+  /usr/include/string.h \
+  /usr/include/strings.h \
+  /usr/include/sys/cdefs.h \
+  /usr/include/sys/select.h \
+  /usr/include/sys/types.h \
+  /usr/include/time.h \
+  /usr/lib/gcc/x86_64-redhat-linux/15/include/stdarg.h \
+  /usr/lib/gcc/x86_64-redhat-linux/15/include/stddef.h
+
+CMakeFiles/game.dir/src/game/monster/tower_spawner/tower_spawner.c.o: src/game/monster/tower_spawner/tower_spawner.c \
+  src/common/header/shared.h \
+  src/game/header/game.h \
+  src/game/header/local.h \
+  src/game/monster/tower_spawner/tower_spawner.h \
   /usr/include/alloca.h \
   /usr/include/assert.h \
   /usr/include/bits/atomic_wide_counter.h \
@@ -3828,7 +4140,11 @@ release/baseq2/game.so: /lib64/ld-linux-x86-64.so.2 \
   CMakeFiles/game.dir/src/game/monster/soldier/soldier.c.o \
   CMakeFiles/game.dir/src/game/monster/supertank/supertank.c.o \
   CMakeFiles/game.dir/src/game/monster/tank/tank.c.o \
+  CMakeFiles/game.dir/src/game/monster/tower_aoe/tower_aoe.c.o \
+  CMakeFiles/game.dir/src/game/monster/tower_currency/tower_currency.c.o \
+  CMakeFiles/game.dir/src/game/monster/tower_gunner/tower_gunner.c.o \
   CMakeFiles/game.dir/src/game/monster/tower_sap/tower_sap.c.o \
+  CMakeFiles/game.dir/src/game/monster/tower_spawner/tower_spawner.c.o \
   CMakeFiles/game.dir/src/game/player/client.c.o \
   CMakeFiles/game.dir/src/game/player/hud.c.o \
   CMakeFiles/game.dir/src/game/player/trail.c.o \
@@ -3840,6 +4156,8 @@ release/baseq2/game.so: /lib64/ld-linux-x86-64.so.2 \
 CMakeFiles/game.dir/src/game/player/weapon.c.o:
 
 CMakeFiles/game.dir/src/game/monster/tower_sap/tower_sap.c.o:
+
+CMakeFiles/game.dir/src/game/monster/tower_aoe/tower_aoe.c.o:
 
 CMakeFiles/game.dir/src/game/monster/supertank/supertank.c.o:
 
@@ -3868,8 +4186,6 @@ CMakeFiles/game.dir/src/game/g_svcmds.c.o:
 CMakeFiles/game.dir/src/game/monster/gladiator/gladiator.c.o:
 
 CMakeFiles/game.dir/src/game/g_phys.c.o:
-
-CMakeFiles/game.dir/src/game/g_misc.c.o:
 
 CMakeFiles/game.dir/src/game/g_main.c.o:
 
@@ -3945,9 +4261,23 @@ src/game/savegame/tables/clientfields.h:
 
 src/game/player/hud.c:
 
+CMakeFiles/game.dir/src/game/g_misc.c.o:
+
+src/game/monster/tower_spawner/tower_spawner.h:
+
 CMakeFiles/game.dir/src/game/g_combat.c.o:
 
 src/game/monster/tower_sap/tower_sap.c:
+
+src/game/monster/tower_gunner/tower_gunner.h:
+
+CMakeFiles/game.dir/src/game/monster/tower_currency/tower_currency.c.o:
+
+src/game/monster/tower_currency/tower_currency.h:
+
+src/game/monster/tower_aoe/tower_aoe.h:
+
+src/game/monster/tower_aoe/tower_aoe.c:
 
 src/game/player/weapon.c:
 
@@ -4017,6 +4347,8 @@ src/game/monster/hover/hover.c:
 
 /usr/include/bits/stdint-uintn.h:
 
+CMakeFiles/game.dir/src/game/monster/tower_gunner/tower_gunner.c.o:
+
 /usr/include/bits/types/clockid_t.h:
 
 /usr/lib/gcc/x86_64-redhat-linux/15/crtendS.o:
@@ -4068,6 +4400,8 @@ CMakeFiles/game.dir/src/game/monster/tank/tank.c.o:
 /usr/include/bits/types/__mbstate_t.h:
 
 /usr/include/bits/time.h:
+
+src/game/monster/tower_gunner/tower_gunner.c:
 
 /usr/include/bits/byteswap.h:
 
@@ -4121,6 +4455,8 @@ src/game/header/game.h:
 
 /usr/include/bits/types/timer_t.h:
 
+CMakeFiles/game.dir/src/game/monster/tower_spawner/tower_spawner.c.o:
+
 /usr/include/stdio.h:
 
 CMakeFiles/game.dir/src/game/monster/parasite/parasite.c.o:
@@ -4134,6 +4470,8 @@ src/game/g_utils.c:
 CMakeFiles/game.dir/src/game/g_ai.c.o:
 
 src/game/savegame/tables/gamemmove_decs.h:
+
+src/game/monster/tower_currency/tower_currency.c:
 
 /usr/include/features-time64.h:
 
@@ -4280,6 +4618,8 @@ src/game/g_phys.c:
 CMakeFiles/game.dir/src/game/monster/boss3/boss31.c.o:
 
 CMakeFiles/game.dir/src/game/g_cmds.c.o:
+
+src/game/monster/tower_spawner/tower_spawner.c:
 
 /usr/include/bits/math-vector.h:
 

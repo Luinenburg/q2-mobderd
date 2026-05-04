@@ -684,10 +684,10 @@ FindTarget(edict_t *self)
 		}*/
 
 		/* is client in an spot too dark to be seen? */
-		if (possible_target->light_level <= 5)
-		{
-			return false;
-		}
+		//if (possible_target->light_level <= 5)
+		//{
+		//	return false;
+		//}
 
 		if (!visible(self, possible_target))
 		{
@@ -779,10 +779,6 @@ FindTarget(edict_t *self)
 		self->monsterinfo.sight(self, self->enemy);
 	}
 
-	//if (TestTargetOnTeam(self, possible_target)) {
-	//	self->enemy = NULL;
-	//	return false;
-	//}
 	return true;
 }
 

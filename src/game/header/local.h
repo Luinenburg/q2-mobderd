@@ -427,6 +427,8 @@ typedef struct
 	void (*sight)(edict_t *self, edict_t *other);
 	qboolean (*checkattack)(edict_t *self);
 
+	qboolean (*upgrade)(edict_t *self, edict_t *upgrader);
+
 	float pausetime;
 	float attack_finished;
 
@@ -438,6 +440,8 @@ typedef struct
 	int lefty;
 	float idle_time;
 	int linkcount;
+
+	int upgrade_tier;
 
 	int power_armor_type;
 	int power_armor_power;

@@ -571,6 +571,8 @@ tower_sap_drain_attack(edict_t *self)
 	gi.WritePosition(end);
 	gi.multicast(self->s.origin, MULTICAST_PVS);
 
+	damage = (self->monsterinfo.upgrade_tier+1)*2 * damage;
+
 	VectorSubtract(start, end, dir);
 	T_Damage(self->enemy, self, self, dir, self->enemy->s.origin,
 			vec3_origin, damage, 0, DAMAGE_NO_KNOCKBACK, MOD_UNKNOWN);
@@ -735,6 +737,27 @@ tower_sap_die(edict_t *self, edict_t *inflictor /* unused */,
 	self->monsterinfo.currentmove = &tower_sap_move_death;
 }
 
+qboolean tower_sap_upgrade(edict_t *self, edict_t *upgrader)
+{
+	if (!upgrader->client) return false;
+	if (self->monsterinfo.upgrade_tier == 2)
+	{
+		gi.centerprintf(upgrader, "Tower is at max level.");
+		return false;
+	}
+	if (upgrader->currency - 5 < 0)
+	{
+		gi.centerprintf(upgrader, "Tower is at tier %d", self->monsterinfo.upgrade_tier);
+		return false;
+	}
+
+	upgrader->currency -= 5;
+	self->monsterinfo.upgrade_tier++;
+	self->health += 50;
+	gi.centerprintf(upgrader, "Tower successfully upgraded to %d", self->monsterinfo.upgrade_tier);
+	return true;
+}
+
 /*
  * QUAKED monster_tower_sap (1 .5 0) (-16 -16 -24) (16 16 32) Ambush Trigger_Spawn Sight
  */
@@ -778,6 +801,9 @@ SP_monster_tower_sap(edict_t *self)
 	self->monsterinfo.attack = tower_sap_attack;
 	self->monsterinfo.sight = tower_sap_sight;
 	self->monsterinfo.idle = tower_sap_idle;
+
+	self->monsterinfo.upgrade = tower_sap_upgrade;
+	self->monsterinfo.upgrade_tier = 0;
 
 	gi.linkentity(self);
 

@@ -1936,6 +1936,13 @@ Cmd_MakeItRain_f(edict_t *ent) {
 	gi.centerprintf(ent, "You have %d currency", ent->currency);
 }
 
+static void
+Cmd_MakeItDry_f(edict_t *ent) {
+	if (!ent) return;
+	ent->currency = 0;
+	gi.centerprintf(ent, "You have %d currency", ent->currency);
+}
+
 void
 ClientCommand(edict_t *ent)
 {
@@ -2112,9 +2119,13 @@ ClientCommand(edict_t *ent)
 	{
 		Cmd_CycleTower_f(ent);
 	}
-		else if (Q_stricmp(cmd, "mir") == 0)
+	else if (Q_stricmp(cmd, "mir") == 0)
 	{
 		Cmd_MakeItRain_f(ent);
+	}
+	else if (Q_stricmp(cmd, "mid") == 0)
+	{
+		Cmd_MakeItDry_f(ent);
 	}
 	else /* anything that doesn't match a command will be a chat */
 	{

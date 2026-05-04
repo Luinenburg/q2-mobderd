@@ -416,6 +416,16 @@ blaster_touch(edict_t *self, edict_t *other, cplane_t *plane, csurface_t *surf)
 		PlayerNoise(self->owner, self->s.origin, PNOISE_IMPACT);
 	}
 
+	if (self->owner->client && (self->owner->monsterinfo.aiflags & AI_DEFENDER) > 0 && (other->monsterinfo.aiflags & AI_DEFENDER) > 0)
+	{
+		if (other->monsterinfo.upgrade)
+		{
+			other->monsterinfo.upgrade(other, self->owner);
+			G_FreeEdict(self);
+			return;
+		}
+	}
+
 	if (other->takedamage)
 	{
 		if (self->spawnflags & 1)

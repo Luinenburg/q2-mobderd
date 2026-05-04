@@ -560,6 +560,14 @@ tower_spawner_die(edict_t *self, edict_t *inflictor /* unused */, edict_t *attac
 	}
 }
 
+qboolean tower_spawner_upgrade(edict_t *self, edict_t *upgrader)
+{
+	if (upgrader->client)
+	{
+		gi.centerprintf(upgrader, "Upgrade attempted!");
+	}
+}
+
 /*
  * QUAKED monster_tower_spawner (1 .5 0) (-16 -16 -24) (16 16 32) Ambush Trigger_Spawn Sight
  */
@@ -606,11 +614,13 @@ SP_monster_tower_spawner(edict_t *self)
 	self->monsterinfo.sight = tower_spawner_sight;
 	self->monsterinfo.search = tower_spawner_search;
 
+	self->monsterinfo.upgrade = tower_spawner_upgrade;
+
 	self->monsterinfo.currentmove = &tower_spawner_move_stand;
 	self->monsterinfo.scale = MODEL_SCALE;
 
-	//self->monsterinfo.aiflags |= AI_DEFENDER;
-	//self->monsterinfo.aiflags |= AI_GOOD_GUY;
+	self->monsterinfo.aiflags |= AI_DEFENDER;
+	self->monsterinfo.aiflags |= AI_GOOD_GUY;
 	self->flags |= FL_NO_KNOCKBACK;
 
 	gi.linkentity(self);

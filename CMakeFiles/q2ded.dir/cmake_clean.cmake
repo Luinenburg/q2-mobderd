@@ -1,4 +1,5 @@
 file(REMOVE_RECURSE
+  "CMakeFiles/q2ded.dir/link.d"
   "CMakeFiles/q2ded.dir/src/backends/generic/misc.c.o"
   "CMakeFiles/q2ded.dir/src/backends/generic/misc.c.o.d"
   "CMakeFiles/q2ded.dir/src/backends/unix/main.c.o"

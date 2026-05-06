@@ -247,8 +247,9 @@ tower_spawner_attack_spike(edict_t *self)
 	{
 		return;
 	}
+	int damage = (15 + (randk() % 6)) * (self->monsterinfo.upgrade_tier + 1);
 
-	fire_hit(self, aim, (15 + (randk() % 6)), 400); /*	Faster attack -- upwards and backwards */
+	fire_hit(self, aim, damage; /*	Faster attack -- upwards and backwards */
 }
 
 void
@@ -290,9 +291,10 @@ tower_spawner_attack_club(edict_t *self)
 	{
 		return;
 	}
+	int damage = (5 + (randk() % 6)) * (self->monsterinfo.upgrade_tier + 1);
 
 	VectorSet(aim, MELEE_DISTANCE, self->mins[0], -4);
-	fire_hit(self, aim, (5 + (randk() % 6)), 400);       /* Slower attack */
+	fire_hit(self, aim, damage, 400);       /* Slower attack */
 }
 
 static mframe_t tower_spawner_frames_attack_club[] = {
@@ -562,10 +564,23 @@ tower_spawner_die(edict_t *self, edict_t *inflictor /* unused */, edict_t *attac
 
 qboolean tower_spawner_upgrade(edict_t *self, edict_t *upgrader)
 {
-	if (upgrader->client)
+	if (!upgrader->client) return false;
+	if (self->monsterinfo.upgrade_tier == 2)
 	{
-		gi.centerprintf(upgrader, "Upgrade attempted!");
+		gi.centerprintf(upgrader, "Tower is at max level.");
+		return false;
 	}
+	if (upgrader->currency - 20 < 0)
+	{
+		gi.centerprintf(upgrader, "Tower is at tier %d", self->monsterinfo.upgrade_tier);
+		return false;
+	}
+
+	upgrader->currency -= 20;
+	self->monsterinfo.upgrade_tier++;
+	self->health += 50;
+	gi.centerprintf(upgrader, "Tower successfully upgraded to %d", self->monsterinfo.upgrade_tier);
+	return true;
 }
 
 /*

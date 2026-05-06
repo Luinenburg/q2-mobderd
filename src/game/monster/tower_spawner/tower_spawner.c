@@ -249,7 +249,7 @@ tower_spawner_attack_spike(edict_t *self)
 	}
 	int damage = (15 + (randk() % 6)) * (self->monsterinfo.upgrade_tier + 1);
 
-	fire_hit(self, aim, damage; /*	Faster attack -- upwards and backwards */
+	fire_hit(self, aim, damage, 400); /*	Faster attack -- upwards and backwards */
 }
 
 void
@@ -570,13 +570,13 @@ qboolean tower_spawner_upgrade(edict_t *self, edict_t *upgrader)
 		gi.centerprintf(upgrader, "Tower is at max level.");
 		return false;
 	}
-	if (upgrader->currency - 20 < 0)
+	if (upgrader->currency - 15 < 0)
 	{
 		gi.centerprintf(upgrader, "Tower is at tier %d", self->monsterinfo.upgrade_tier);
 		return false;
 	}
 
-	upgrader->currency -= 20;
+	upgrader->currency -= 15;
 	self->monsterinfo.upgrade_tier++;
 	self->health += 50;
 	gi.centerprintf(upgrader, "Tower successfully upgraded to %d", self->monsterinfo.upgrade_tier);
@@ -630,6 +630,7 @@ SP_monster_tower_spawner(edict_t *self)
 	self->monsterinfo.search = tower_spawner_search;
 
 	self->monsterinfo.upgrade = tower_spawner_upgrade;
+	self->monsterinfo.upgrade_tier = 0;
 
 	self->monsterinfo.currentmove = &tower_spawner_move_stand;
 	self->monsterinfo.scale = MODEL_SCALE;

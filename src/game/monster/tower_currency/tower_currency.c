@@ -560,6 +560,27 @@ tower_currency_die(edict_t *self, edict_t *inflictor /* unused */, edict_t *atta
 	}
 }
 
+qboolean
+tower_currency_upgrade(edict_t *self, edict_t *upgrader) {
+	if (!upgrader->client) return false;
+	if (self->monsterinfo.upgrade_tier == 2)
+	{
+		gi.centerprintf(upgrader, "Tower is at max level.");
+		return false;
+	}
+	if (upgrader->currency - 20 < 0)
+	{
+		gi.centerprintf(upgrader, "Tower is at tier %d", self->monsterinfo.upgrade_tier);
+		return false;
+	}
+
+	upgrader->currency -= 20;
+	self->monsterinfo.upgrade_tier++;
+	self->health += 25;
+	gi.centerprintf(upgrader, "Tower successfully upgraded to %d", self->monsterinfo.upgrade_tier);
+	return true;
+}
+
 /*
  * QUAKED monster_tower_currency (1 .5 0) (-16 -16 -24) (16 16 32) Ambush Trigger_Spawn Sight
  */
@@ -605,6 +626,9 @@ SP_monster_tower_currency(edict_t *self)
 	self->monsterinfo.melee = tower_currency_melee;
 	self->monsterinfo.sight = tower_currency_sight;
 	self->monsterinfo.search = tower_currency_search;
+
+	self->monsterinfo.upgrade = tower_currency_upgrade;
+	self->monsterinfo.upgrade_tier = 0;
 
 	self->monsterinfo.currentmove = &tower_currency_move_stand;
 	self->monsterinfo.scale = MODEL_SCALE;

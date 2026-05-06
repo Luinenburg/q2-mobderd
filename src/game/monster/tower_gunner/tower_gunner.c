@@ -875,6 +875,27 @@ tower_gunner_refire_chain(edict_t *self)
 	self->monsterinfo.currentmove = &tower_gunner_move_endfire_chain;
 }
 
+qboolean
+tower_gunner_upgrade(edict_t *self, edict_t *upgrader) {
+	if (!upgrader->client) return false;
+	if (self->monsterinfo.upgrade_tier == 2)
+	{
+		gi.centerprintf(upgrader, "Tower is at max level.");
+		return false;
+	}
+	if (upgrader->currency - 10 < 0)
+	{
+		gi.centerprintf(upgrader, "Tower is at tier %d", self->monsterinfo.upgrade_tier);
+		return false;
+	}
+
+	upgrader->currency -= 10;
+	self->monsterinfo.upgrade_tier++;
+	self->health += 100;
+	gi.centerprintf(upgrader, "Tower successfully upgraded to %d", self->monsterinfo.upgrade_tier);
+	return true;
+}
+
 /*
  * QUAKED monster_gunner (1 .5 0) (-16 -16 -24) (16 16 32) Ambush Trigger_Spawn Sight
  */
@@ -923,6 +944,9 @@ SP_monster_tower_gunner(edict_t *self)
 	self->monsterinfo.melee = NULL;
 	self->monsterinfo.sight = tower_gunner_sight;
 	self->monsterinfo.search = tower_gunner_search;
+
+	self->monsterinfo.upgrade = tower_gunner_upgrade;
+	self->monsterinfo.upgrade_tier = 0;
 
 	gi.linkentity(self);
 

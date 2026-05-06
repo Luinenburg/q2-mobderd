@@ -742,6 +742,27 @@ tower_aoe_die(edict_t *self, edict_t *inflictor /* unused */,
 	self->monsterinfo.currentmove = &tower_aoe_move_death;
 }
 
+qboolean
+tower_aoe_upgrade(edict_t *self, edict_t *upgrader) {
+	if (!upgrader->client) return false;
+	if (self->monsterinfo.upgrade_tier == 2)
+	{
+		gi.centerprintf(upgrader, "Tower is at max level.");
+		return false;
+	}
+	if (upgrader->currency - 8 < 0)
+	{
+		gi.centerprintf(upgrader, "Tower is at tier %d", self->monsterinfo.upgrade_tier);
+		return false;
+	}
+
+	upgrader->currency -= 8;
+	self->monsterinfo.upgrade_tier++;
+	self->health += 60;
+	gi.centerprintf(upgrader, "Tower successfully upgraded to %d", self->monsterinfo.upgrade_tier);
+	return true;
+}
+
 /*
  * QUAKED monster_tower_aoe (1 .5 0) (-16 -16 -24) (16 16 32) Ambush Trigger_Spawn Sight
  */
@@ -785,6 +806,9 @@ SP_monster_tower_aoe(edict_t *self)
 	self->monsterinfo.attack = tower_aoe_attack;
 	self->monsterinfo.sight = tower_aoe_sight;
 	self->monsterinfo.idle = tower_aoe_idle;
+
+	self->monsterinfo.upgrade = tower_aoe_upgrade;
+	self->monsterinfo.upgrade_tier = 0;
 
 	gi.linkentity(self);
 
